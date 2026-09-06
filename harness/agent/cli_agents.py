@@ -54,7 +54,7 @@ from harness.pricing import cost_usd
 from harness.redaction import sanitize
 from harness.sandbox.docker_executor import ResourceSpec
 
-CLI_AGENT_PROVIDERS = frozenset({"claude-code", "codex", "cursor", "grok-build", "zcode"})
+CLI_AGENT_PROVIDERS = frozenset({"claude-code", "codex", "cursor", "grok-build", "zcode", "muse-code"})
 
 # Claude Code's headless result text when a subscription window is exhausted
 # (e.g. "Claude AI usage limit reached|...", "5-hour limit reached ∙ resets 3am").
@@ -2754,6 +2754,9 @@ _CLI_AGENT_ADAPTERS: dict[str, CliAgentAdapter] = {
 def get_cli_agent_adapter(spec_or_name: str) -> CliAgentAdapter:
     """Resolve a harness name or ``harness:model`` spec to its adapter."""
     name = spec_or_name.partition(":")[0].strip().lower()
+    if name == "muse-code":
+        from harness.agent.muse_code import MuseCodeAdapter
+        return MuseCodeAdapter()
     try:
         return _CLI_AGENT_ADAPTERS[name]
     except KeyError as exc:
@@ -2763,7 +2766,7 @@ def get_cli_agent_adapter(spec_or_name: str) -> CliAgentAdapter:
 
 def list_cli_agent_adapters() -> list[CliAgentAdapter]:
     """All external harness adapters in stable display order."""
-    return [_CLI_AGENT_ADAPTERS[name] for name in sorted(_CLI_AGENT_ADAPTERS)]
+    return [get_cli_agent_adapter(name) for name in sorted(CLI_AGENT_PROVIDERS)]
 
 
 def _fold_codex_judge_usage(usage: dict[str, Any]) -> tuple[int, int]:

@@ -94,6 +94,12 @@ PRICES: dict[str, dict[str, float]] = {
     # Meta Model API standard tier. Contributor requests permit Meta to use
     # prompts/completions for training in exchange for the lower rate.
     "meta:muse-spark-1.2": {"input": 1.25, "output": 4.25},
+    # Standard Spark 1.3 list rates verified 2026-09-05 against the
+    # OpenRouter provider listing: https://openrouter.ai/meta/muse-spark-1.3
+    "meta:muse-spark-1.3": {"input": 1.25, "output": 4.25, "cached_input": 0.15},
+    # Meta pricing page verified 2026-09-06. Contributor permits model training.
+    # API-equivalent estimate only; Muse Code uses the account subscription.
+    "meta:muse-spark-1.3-contributor": {"input": 0.10, "output": 0.20, "cached_input": 0.002},
     "meta:muse-spark-1.2-contributor": {"input": 0.10, "output": 0.20},
     # Free / offline.
     "mock:": {"input": 0.0, "output": 0.0},
@@ -113,6 +119,7 @@ _SPEC_ALIASES = {
     "codex:": "openai:",
     "grok-build:": "xai:",
     "zcode:": "zai:",
+    "muse-code:": "meta:",
 }
 
 

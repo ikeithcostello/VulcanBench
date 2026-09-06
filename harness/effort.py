@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-EFFORT_LEVELS = frozenset({"minimal", "low", "medium", "high", "extra-high", "max"})
+EFFORT_LEVELS = frozenset({"minimal", "low", "medium", "high", "extra-high", "max", "ultra"})
 DEFAULT_SWEEP_EFFORTS = ("low", "medium", "high")
 
 _OPENAI_EFFORT_VALUES = {
@@ -158,6 +158,7 @@ _PROVIDER_EFFORT_MAPS = {
     "deepseek": _DEEPSEEK_EFFORT_VALUES,
     "qwen": _QWEN_EFFORT_VALUES,
     "meta": _META_EFFORT_VALUES,
+    "muse-code": {**_META_EFFORT_VALUES, "max": "max", "ultra": "ultra"},
     "xai": _XAI_EFFORT_VALUES,
     "cursor": _CURSOR_EFFORT_VALUES,
     "grok-build": _GROK_BUILD_EFFORT_VALUES,
