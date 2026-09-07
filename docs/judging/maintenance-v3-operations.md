@@ -28,3 +28,8 @@ operational notes live here.
   reviews; the fix belongs in the transport's retry classification and can
   only land with a new protocol identifier, so it is deferred to the
   boundary before the full pass and recorded here.
+- Opus 5, control 2, repeat 5: third occurrence in 31 reviews. The documented
+  rule is now applied by `harness/maintenance_review_v3_resume.py`, a script
+  outside the frozen code set that marks exactly this CLI subtype retryable
+  once per call and re-invokes the stage. Anything else still stops for a
+  person. Every application is printed and recorded in the receipt.
