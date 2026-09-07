@@ -90,9 +90,9 @@ def _magic_literal_count(tree: ast.AST) -> int:
                 named.add(id(node.value))
     count = 0
     for node in ast.walk(tree):
-        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)) and not isinstance(node.value, bool):
-            if node.value not in _UNREMARKABLE_LITERALS and id(node) not in named:
-                count += 1
+        if (isinstance(node, ast.Constant) and isinstance(node.value, (int, float)) and not isinstance(node.value, bool)
+                and node.value not in _UNREMARKABLE_LITERALS and id(node) not in named):
+            count += 1
     return count
 
 

@@ -1,0 +1,101 @@
+{
+  "task": "legacy-blendcore-binary-parity",
+  "protocol": "code-quality-maintenance-v3",
+  "sources": [
+    "metadata.json decontamination_notes",
+    "builder/gold_blendcore.py",
+    "tests/fixtures.json"
+  ],
+  "quirks": [
+    {
+      "id": "Q1",
+      "condition": "Any accepted D command (units are tenths of a millilitre).",
+      "effect": "The tank's physical volume is reduced by the granted amount plus a settling allowance of 1 tenth per full 500 tenths granted, capped at what remains in the tank; the job total and the tank's ledger are credited only the granted amount. R recomputes each tank's book as ledger fills minus ledger dispenses without the allowance, reports it, and sets the physical volume, the fill baseline, and the dispensed total to that book figure with the accumulated allowance reset to zero.",
+      "families": [
+        "book_vs_physical",
+        "reconcile_feedback"
+      ]
+    },
+    {
+      "id": "Q2",
+      "condition": "R on a tank whose settling allowance accumulated since its last R exceeds 50 tenths.",
+      "effect": "The book figure is reduced by half of the accumulated allowance (integer division) and floored at 0, and that reduced figure becomes the tank's new physical volume and ledger baseline.",
+      "families": [
+        "writeoff"
+      ]
+    },
+    {
+      "id": "Q3",
+      "condition": "A dispense whose granted amount is at least 1000 tenths from a tank whose pigment id contains an upper-case letter W.",
+      "effect": "The settling allowance for that dispense is doubled; a lower-case w or a granted amount below 1000 tenths leaves the allowance unchanged.",
+      "families": [
+        "white_bulk"
+      ]
+    },
+    {
+      "id": "Q4",
+      "condition": "A dispense whose requested amount exceeds the tank's physical volume by at most 20 tenths.",
+      "effect": "The dispense is granted at the full physical volume and the job is credited that actual amount; a shortfall of more than 20 tenths is rejected with N tank DRY.",
+      "families": [
+        "near_dry_partial"
+      ]
+    },
+    {
+      "id": "Q5",
+      "condition": "A T command whose volume, added to the tank's existing physical volume or ledger fills, would exceed 9999999 tenths.",
+      "effect": "Both the physical volume and the ledger fills figure are capped at 9999999 tenths and the fill is accepted with OK.",
+      "families": [
+        "overfill_cap"
+      ]
+    },
+    {
+      "id": "Q6",
+      "condition": "A tank or job id that differs only in letter case from one already seen in the session.",
+      "effect": "It is treated as the same tank or job and output lines echo the first-seen spelling; pigment ids remain case-sensitive.",
+      "families": [
+        "case_fold"
+      ]
+    },
+    {
+      "id": "Q7",
+      "condition": "A T or D command carrying more than the documented number of tokens.",
+      "effect": "The extra tokens are ignored and the command is processed normally; reject replies echo the line's tank token, or ???????? when the line has no tank token.",
+      "families": [
+        "lenient_tokens"
+      ]
+    },
+    {
+      "id": "Q8",
+      "condition": "Any command that is rejected.",
+      "effect": "Validation runs in the order FMT (arity and id syntax), then VOL for T or AMT for D, then FMT for an unknown tank, then PIGMENT for T, then DRY for D; the first failing check names the code.",
+      "families": [
+        "full_corpus_parity"
+      ]
+    }
+  ],
+  "unmapped_families": [],
+  "reader_questions": [
+    {
+      "id": "R1",
+      "type": "behavioural",
+      "question": "A single tank is filled with 1015 tenths of pigment blk. One D command then asks for 1030 tenths from that tank into job j1. What number does the reply to that D command carry?",
+      "answer": "1015",
+      "check": "exact",
+      "verification": "printf 'T t1 blk 1015\\nD j1 t1 1030\\nR\\n' | .venv/bin/python builder/gold_blendcore.py -> OK 1 / J j1 1015 / B t1 0 / REND 1 / X 1 1 1 0. Also matched by builder/blendcore-darwin-arm64."
+    },
+    {
+      "id": "R2",
+      "type": "behavioural",
+      "question": "A tank is filled with 100000 tenths of pigment Wbase7. Two D commands then draw 2000 tenths each from that tank into different jobs, and R runs. Relative to the physical volume the tank held just before R, is the book written up or down? Answer with the single word up or down.",
+      "answer": "up",
+      "check": "exact",
+      "verification": "printf 'T t1 Wbase7 100000\\nD j1 t1 2000\\nD j2 t1 2000\\nR\\n' | .venv/bin/python builder/gold_blendcore.py -> OK 1 / J j1 2000 / J j2 2000 / B t1 96000 / REND 1 / X 1 2 1 0. Physical volume before R confirmed at 95984 by printf 'T t1 Wbase7 100000\\nD j1 t1 2000\\nD j2 t1 2000\\nD j3 t1 95985\\n' -> J j3 95984 (short pour of everything available). Book 96000 is above 95984, so the worked example's answer up is confirmed. The worked example spelled the pigment Wbase-7; the hyphen fails the alphanumeric id rule (N t1 FMT), so the question uses Wbase7."
+    },
+    {
+      "id": "R3",
+      "type": "locate",
+      "question": "Name the function that decides whether a reconcile reports a book figure lower than fills minus dispenses.",
+      "quirk": "Q2"
+    }
+  ]
+}

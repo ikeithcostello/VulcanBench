@@ -1,0 +1,100 @@
+{
+  "task": "legacy-lodgecore-binary-parity",
+  "protocol": "code-quality-maintenance-v3",
+  "sources": ["metadata.json decontamination_notes", "builder/gold_lodgecore.py", "tests/fixtures.json"],
+  "quirks": [
+    {
+      "id": "Q1",
+      "condition": "A lodged party departs with an L (late) command.",
+      "effect": "The party's live trail standing rises by 1 point; the spec counts a late departure as a completed stay worth +5. The airing and settling recomputes use +5 for the L entry, so the live shortfall is replaced at the party's next recompute.",
+      "families": ["late_lag"]
+    },
+    {
+      "id": "Q2",
+      "condition": "A lodged party departs with a G command and its ledger already holds at least one earlier G or L departure.",
+      "effect": "The party's live standing rises by 7 points instead of the spec's +5; the first completion still adds +5. Both recomputes use +5 per completion, so the extra 2 points per later completion are dropped at the next recompute.",
+      "families": ["return_momentum"]
+    },
+    {
+      "id": "Q3",
+      "condition": "A lodged party departs with an E command and its most recent earlier departure entry (G, E, or L; rota relocations are skipped when looking back) was also an E.",
+      "effect": "The party's live standing falls by 22 points instead of the spec's -15; an E whose previous departure was G or L, or with no previous departure, costs -15. Both recomputes charge -15 per early departure, so the extra 7 points are restored at the next recompute.",
+      "families": ["early_chain"]
+    },
+    {
+      "id": "Q4",
+      "condition": "A party's standing is recomputed by an airing step or a settling and the party has been relocated by the rota more than twice in total.",
+      "effect": "The recomputed standing is 10 x size + 5 per G or L departure - 15 per early departure - 2 per relocation beyond the second (the first two relocations are free); the spec says relocations never change standing. The recomputed value overwrites the live value.",
+      "families": ["rota_tax"]
+    },
+    {
+      "id": "Q5",
+      "condition": "A W step rests a room that has already been rested at least once before (its airing count reaches 2 or more).",
+      "effect": "The room's occupants are relocated in reverse berth order (last-listed occupant first), so the MV lines, the destination chosen for each occupant, and which occupant is turned out when space runs short all follow the reversed order; the spec relocates in berth order. A room's first airing uses berth order.",
+      "families": ["rota_reverse"]
+    },
+    {
+      "id": "Q6",
+      "condition": "The settling recomputes standing for a party whose ledger holds an E departure followed later by a G departure from the same room (matched by the room's opening sequence).",
+      "effect": "That early departure is not charged in the settling recompute (the -15 for it is dropped); the spec charges every early departure. A later L departure, or a later G departure from a different room, does not forgive it, and the airing recompute never forgives.",
+      "families": ["settle_forgive"]
+    },
+    {
+      "id": "Q7",
+      "condition": "An S command runs while at least one open (not resting) room has been aired before.",
+      "effect": "Rooms are filled in descending order of the W step at which they were last aired (most recently aired first), then the never-aired open rooms in opening order; the RM lines after SETTLED are still printed in opening order. The spec fills in opening order throughout.",
+      "families": ["settle_order"]
+    },
+    {
+      "id": "Q8",
+      "condition": "An S command runs after at least one W step has aired a room.",
+      "effect": "The rota pointer is set to the room with the highest last-aired step number, so the next W rests that room again and V lists it first; the spec leaves the pointer unaffected. When no room has ever been aired the pointer is unchanged.",
+      "families": ["settle_pointer"]
+    },
+    {
+      "id": "Q9",
+      "condition": "A B command names a currently resting room, and the party is otherwise bookable (registered or departed, valid ids).",
+      "effect": "The booking is accepted with OK <pending>, the booking count is incremented, and the party is held on the room's porch list in booking order. In the reopen phase of the next W step each porch party berths silently (no output line) at its live standing when the room's free bunks are at least its size, incrementing the arrival count, and is otherwise turned out, incrementing the departure count. The spec rejects the booking with STATE.",
+      "families": ["porch"]
+    },
+    {
+      "id": "Q10",
+      "condition": "An A command finds fewer free bunks in the booked room than the party's size, but at least ceil(size / 2) free bunks.",
+      "effect": "The party berths with reply IN <room> and occupies every remaining free bunk (its occupancy is recorded as the free count, not its size); that reduced occupancy is what later free-bunk calculations subtract. A later relocation or settling placement of the same party uses its full size. The spec rejects with STATE when free bunks are fewer than size.",
+      "families": ["doubling"]
+    },
+    {
+      "id": "Q11",
+      "condition": "A party is inserted into a room whose airing count is 2 or more and its standing equals that of an occupant already berthed there.",
+      "effect": "The later-registered party is placed ahead of the earlier-registered one (registration order reversed for ties); the spec places the earliest-registered party first. The same rule applies at every insertion site (arrival, porch berth, rota relocation, settling); rooms aired fewer than twice keep earliest-first.",
+      "families": ["aired_tieflip"]
+    }
+  ],
+  "unmapped_families": [
+    {"family": "full_corpus_parity", "reason": "mixed corpus parity: two long sessions (157 and 218 commands) that exercise many quirks together, so no single quirk maps"}
+  ],
+  "reader_questions": [
+    {
+      "id": "R1",
+      "type": "behavioural",
+      "question": "A session runs these commands in order: O R1 4, P PA 3, P PB 2, B PA R1, A PA, B PB R1, A PB. In the X trailer printed at end of input, what is the arrivals count (the fourth number)?",
+      "answer": "2",
+      "check": "exact",
+      "verification": "printf 'O R1 4\\nP PA 3\\nP PB 2\\nB PA R1\\nA PA\\nB PB R1\\nA PB\\n' | /Users/morganlinton/dev/VulcanBench/.venv/bin/python builder/gold_lodgecore.py (run in the task dir) prints 'IN R1' for the second arrival and the trailer 'X 2 1 2 2 0 0 0'; repo/legacy/run on the same stream prints the identical trailer."
+    },
+    {
+      "id": "R2",
+      "type": "behavioural",
+      "question": "A session runs these commands in order: O R1 4, O R2 4, O R3 4, W, S, V. Which room id appears first on the ROTA line?",
+      "answer": "R1",
+      "check": "exact",
+      "verification": "printf 'O R1 4\\nO R2 4\\nO R3 4\\nW\\nS\\nV\\n' | /Users/morganlinton/dev/VulcanBench/.venv/bin/python builder/gold_lodgecore.py (run in the task dir) prints 'AIRED R1 0', 'SETTLED 0', then 'ROTA R1 R2 R3'; repo/legacy/run on the same stream prints the identical ROTA line."
+    },
+    {
+      "id": "R3",
+      "type": "locate",
+      "question": "Name the function that decides which of two parties with equal standing is listed first when one of them enters a room that has been aired at least twice.",
+      "quirk": "Q11"
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "task": "legacy-stampcore-binary-parity",
+  "protocol": "code-quality-maintenance-v3",
+  "sources": [
+    "metadata.json decontamination_notes",
+    "builder/gold_stampcore.py",
+    "tests/fixtures.json"
+  ],
+  "quirks": [
+    {
+      "id": "Q1",
+      "condition": "Any accepted frank, and any audit.",
+      "effect": "The frank deducts the postage plus a fee of 1 tenth for each multiple of 2000 tenths that the meter's cumulative face postage since its last audit crosses with this frank (fee = floor(new cumulative / 2000) minus floor(old cumulative / 2000)); the full deduction gates LOW. An audit reports DRIFT with the total tenths deducted beyond face postage since the last audit (MATCH when zero), then resets both the cumulative counter and the drift counter without restoring the balance. The spec deducts exactly the postage and always MATCHes.",
+      "families": [
+        "drift_fee",
+        "drift_chain"
+      ]
+    },
+    {
+      "id": "Q2",
+      "condition": "A return on a meter whose drift counter since its last audit is strictly greater than 30 tenths.",
+      "effect": "The credit is priced at the second-to-last franked postage (0 tenths when fewer than two franks are on record) instead of the last franked postage; at 30 or below the last postage is used, and an audit resets the counter.",
+      "families": [
+        "stale_credit"
+      ]
+    },
+    {
+      "id": "Q3",
+      "condition": "A frank on a meter whose id ends in a decimal digit while its balance at frank time is below 10000 tenths.",
+      "effect": "The deduction uses the postage rounded up to the next multiple of 25 tenths, and the rounding excess is added to the drift counter; the face postage still feeds the cumulative fee counter and the ledger.",
+      "families": [
+        "coarse_regime"
+      ]
+    },
+    {
+      "id": "Q4",
+      "condition": "A frank of postage below 25 tenths on a meter that satisfies the Q3 condition (digit-ending id, balance below 10000 tenths).",
+      "effect": "The frank is rejected with N <meter> POST after the UNKNOWN check; the same postage is accepted on any other meter.",
+      "families": [
+        "regime_post"
+      ]
+    },
+    {
+      "id": "Q5",
+      "condition": "A return of more pieces than the meter has franked since its last return.",
+      "effect": "The return is accepted with the piece count silently capped at the frankable count and credited for that many pieces (a credit of 0 on a meter that never franked); the spec rejects with N <meter> RET.",
+      "families": [
+        "over_return"
+      ]
+    },
+    {
+      "id": "Q6",
+      "condition": "A meter id that differs only in letter case from one already registered.",
+      "effect": "It is treated as the same meter (registration replies DUP; franks, returns, and audits act on the existing meter); replies echo the token as spelled on that line.",
+      "families": [
+        "case_fold"
+      ]
+    },
+    {
+      "id": "Q7",
+      "condition": "An M, F, R, or Z command with extra tokens after the documented ones.",
+      "effect": "The extra tokens are ignored and the command is processed; the spec rejects them with N <meter> FMT.",
+      "families": [
+        "lenient_tokens"
+      ]
+    }
+  ],
+  "unmapped_families": [
+    {
+      "family": "full_corpus_parity",
+      "reason": "Held-out mixed corpus exercising every quirk together with spec-accurate paths; no single quirk maps to it."
+    }
+  ],
+  "reader_questions": [
+    {
+      "id": "R1",
+      "type": "behavioural",
+      "question": "Stream: M A 50000, then F A 1500, then F A 1500. What remaining balance in tenths does the second frank reply report?",
+      "answer": "46999",
+      "check": "exact",
+      "verification": "Gold builder/gold_stampcore.py process() and repo/legacy/run on stream ['M A 50000', 'F A 1500', 'F A 1500']; replies 'OK 1', 'P A 48500', 'P A 46999' (a following 'Z A' replies 'Z A DRIFT 1')."
+    },
+    {
+      "id": "R2",
+      "type": "behavioural",
+      "question": "Stream: M M7 9000, then F M7 30. What remaining balance in tenths does the frank reply report?",
+      "answer": "8950",
+      "check": "exact",
+      "verification": "Gold builder/gold_stampcore.py process() and repo/legacy/run on stream ['M M7 9000', 'F M7 30']; replies 'OK 1', 'P M7 8950'."
+    },
+    {
+      "id": "R3",
+      "type": "locate",
+      "question": "Name the function that decides which franked postage rate a return credit is priced at.",
+      "quirk": "Q2"
+    }
+  ]
+}

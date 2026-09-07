@@ -1,0 +1,118 @@
+{
+  "task": "legacy-paddockcore-binary-parity",
+  "protocol": "code-quality-maintenance-v3",
+  "sources": ["metadata.json decontamination_notes", "builder/gold_paddockcore.py", "tests/fixtures.json"],
+  "quirks": [
+    {
+      "id": "Q1",
+      "condition": "Any accepted turnout (G) or bring-in (H) of a pony, and any turnout listing (V).",
+      "effect": "Each pony carries a hidden integer bide that starts at its build; a turnout adds 2 to bide and a bring-in subtracts 1, and the turnout listing orders ponies by bide descending rather than by build. The spec has no bide and orders the listing by build.",
+      "families": ["stir"]
+    },
+    {
+      "id": "Q2",
+      "condition": "The end of every shift (S), after the open-field listing is printed.",
+      "effect": "Every pony's bide is overwritten from the append-only book as build + 2 times booked turnouts - 3 times booked bring-ins, replacing whatever the live +2/-1 adjustments had accumulated. The spec has no such recomputation.",
+      "families": ["square"]
+    },
+    {
+      "id": "Q3",
+      "condition": "Any accepted lead (L) of a pony from one field to another.",
+      "effect": "The lead subtracts 1 from bide on the live path but is booked as a turnout (never as a bring-in), so the next square counts it as +2 and it also becomes the pony's last booked turnout field. The spec treats a lead as a pure relocation.",
+      "families": ["leadbook"]
+    },
+    {
+      "id": "Q4",
+      "condition": "Movement 3 of a shift, when the rested field has occupants.",
+      "effect": "Occupants are hauled in seat order (bide descending with the Q10 tie rule) instead of roster order; the destination is the open field with the most free slots, ties broken by lowest walk sequence (Q6) rather than stake order; a pony with no destination goes to the barn without any book entry or bide change.",
+      "families": ["haul"]
+    },
+    {
+      "id": "Q5",
+      "condition": "Movement 2 of a shift, choosing which open field rests.",
+      "effect": "The engine rests the open field with the oldest stir mark, where a stake, a turnout into the field, a lead into the field, a rest-day haul into the field, and a homing haul into the field each set that field's stir mark to a global increasing counter. The spec walks a stake-order rotation from the last rested field.",
+      "families": ["restpick"]
+    },
+    {
+      "id": "Q6",
+      "condition": "A field that is rested while it has at least one occupant.",
+      "effect": "It wakes at the very next shift (one shift earlier than the spec's two-shift rest) and is assigned a fresh walk sequence number greater than every existing one; that walk sequence, not stake order, then orders the SHIFT field listing and breaks haul-destination ties. A field rested while empty keeps the two-shift schedule and its original sequence.",
+      "families": ["wake"]
+    },
+    {
+      "id": "Q7",
+      "condition": "Any muster (U).",
+      "effect": "Ponies currently out are listed before ponies in the barn, and within each block the rank is build + booked turnouts - booked bring-ins (weights 1/-1 from the book, a third arithmetic distinct from the live path and the square). The spec lists the whole string by build alone.",
+      "families": ["muster"]
+    },
+    {
+      "id": "Q8",
+      "condition": "The start of any muster (U), before the listing is computed.",
+      "effect": "Every pony's bide is moved halfway back toward its build, with the half difference truncated toward zero, symmetric for bide above or below build. The spec has no such adjustment.",
+      "families": ["true"]
+    },
+    {
+      "id": "Q9",
+      "condition": "A pony turned out or led into a field it previously stood in and left.",
+      "effect": "The pony is inserted at its remembered roster index from when it left, capped at the current roster length, instead of appended at the back as the spec states.",
+      "families": ["slot"]
+    },
+    {
+      "id": "Q10",
+      "condition": "Two ponies with equal rank in any ordering (turnout listing, haul order, homing order, muster).",
+      "effect": "Ponies standing in a field that has never woken from a rest come first in enrollment order, followed by ponies standing in a field that has woken at least once in reverse enrollment order; one shared comparator serves every ordering. The spec breaks all ties by enrollment order.",
+      "families": ["seat"]
+    },
+    {
+      "id": "Q11",
+      "condition": "A homing haul (Q12) fires during a field's wake.",
+      "effect": "The haul increments the leads count in the END trailer, although no L command was accepted. The spec counts only accepted commands.",
+      "families": ["book"]
+    },
+    {
+      "id": "Q12",
+      "condition": "At a field's wake, a pony standing in another field whose last booked turnout was into the waking field and that has at least three booked turnouts into it (leads into it count as booked turnouts).",
+      "effect": "The pony is removed from its current field and inserted at the front of the waking field's roster, span permitting, with a PUT line, no bide change and no book entry; the haul sets the waking field's stir mark. Candidates are taken in seat order. The spec has no movement at a wake.",
+      "families": ["home"]
+    },
+    {
+      "id": "Q13",
+      "condition": "A pony sent to the barn as a rest-day leftover (a BARN line) that has at least two booked bring-ins, then left in the barn with no turnout or lead, with at least one further shift since the BARN.",
+      "effect": "From the fourth consecutive muster that finds the pony still in the barn, each such muster subtracts 2 times build from bide; the streak resets on any turnout or lead. The spec has no such debit.",
+      "families": ["levy"]
+    },
+    {
+      "id": "Q14",
+      "condition": "At the square, a pony standing out with at least two career leads whose most recent lead's source field is currently resting.",
+      "effect": "Bide is reduced by a further 3 after the square's overwrite; the source record is replaced by each lead and cleared by a bring-in. The spec has no such debit.",
+      "families": ["gate"]
+    }
+  ],
+  "unmapped_families": [
+    {"family": "full_corpus_parity", "reason": "mixed corpus parity: two random spec-informed sessions of 150 to 220 commands exercising several quirks at once, no single quirk maps"}
+  ],
+  "reader_questions": [
+    {
+      "id": "R1",
+      "type": "behavioural",
+      "question": "A session runs these commands in order: field NARROW is staked with span 4, field BIGLEA is staked with span 4, pony MAB is enrolled with build 10, MAB is turned out into NARROW, MAB is brought in, then one shift runs. Which field does the shift's REST line name?",
+      "answer": "BIGLEA",
+      "check": "exact",
+      "verification": "printf 'F NARROW 4\\nF BIGLEA 4\\nN MAB 10\\nG MAB NARROW\\nH MAB\\nS\\n' | /Users/morganlinton/dev/VulcanBench/.venv/bin/python builder/gold_paddockcore.py (run from the task dir) prints 'REST BIGLEA' as the shift's first result line; repo/legacy/run on the same stream prints the same; the spec-faithful repo/paddockcore.py prints 'REST NARROW'."
+    },
+    {
+      "id": "R2",
+      "type": "behavioural",
+      "question": "A session runs these commands in order: field NARROW is staked with span 2, pony MAB is enrolled with build 10, MAB is turned out into NARROW, field BIGLEA is staked with span 2, then two shifts run one after the other. What number does the second shift print on its SHIFT line?",
+      "answer": "1",
+      "check": "exact",
+      "verification": "printf 'F NARROW 2\\nN MAB 10\\nG MAB NARROW\\nF BIGLEA 2\\nS\\nS\\n' | /Users/morganlinton/dev/VulcanBench/.venv/bin/python builder/gold_paddockcore.py (run from the task dir) prints for the second shift 'WAKE NARROW', 'REST NARROW', 'SHIFT 1', 'F BIGLEA'; repo/legacy/run on the same stream prints the same; the spec-faithful repo/paddockcore.py prints 'REST BIGLEA', 'BARN MAB', 'SHIFT 0'."
+    },
+    {
+      "id": "R3",
+      "type": "locate",
+      "question": "Name the function that decides which open field a shift rests.",
+      "quirk": "Q5"
+    }
+  ]
+}

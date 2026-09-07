@@ -1,0 +1,145 @@
+{
+  "task": "legacy-cellarcore-binary-parity",
+  "protocol": "code-quality-maintenance-v3",
+  "sources": [
+    "metadata.json decontamination_notes",
+    "builder/gold_cellarcore.py",
+    "tests/fixtures.json"
+  ],
+  "quirks": [
+    {
+      "id": "Q1",
+      "condition": "A sample (TAP) is drawn from a wheel that has already been sampled at least once since its last flip (or since its lay, if never flipped).",
+      "effect": "The live settle is debited 7 units for that sample instead of the spec's 3; a flip in a turning round re-arms the 3-unit first-sample debit.",
+      "families": [
+        "mull"
+      ]
+    },
+    {
+      "id": "Q2",
+      "condition": "A sample (TAP) is drawn from a wheel while it is waiting on the sill rather than standing on a rack.",
+      "effect": "The live settle is debited, but the sample is never entered in the cellar ledger, so the turning-round recompute and the grading walk both ignore it; the spec ledgers every sample.",
+      "families": [
+        "creel"
+      ]
+    },
+    {
+      "id": "Q3",
+      "condition": "A wheel is shifted (SHIFT) when it has already been shifted at least once in its lifetime.",
+      "effect": "The live settle is debited 9 units for that shift instead of the spec's 5; the shift is ledgered either way.",
+      "families": [
+        "haul"
+      ]
+    },
+    {
+      "id": "Q4",
+      "condition": "A wheel that has been flipped an odd number of times (parity 1) receives any live sample or shift debit.",
+      "effect": "The debit is deepened by a further 2 units on top of the sample or shift amount; the spec has no parity term.",
+      "families": [
+        "grain"
+      ]
+    },
+    {
+      "id": "Q5",
+      "condition": "The turning round recomputes a wheel's settle from the ledger and the wheel has stood racked through more than one completed round.",
+      "effect": "The recomputed settle is class minus 3 per ledgered sample minus 5 per ledgered shift minus 1 per racked round beyond the first, and it overwrites the live value; the spec charges no age term.",
+      "families": [
+        "stale"
+      ]
+    },
+    {
+      "id": "Q6",
+      "condition": "Two wheels compare equal on the ordering key in any listing (bedding insertion, shift insertion, the round relist, or the grading order).",
+      "effect": "The wheel with fewer lifetime samples (sill samples included) lists first, and only then does lay order decide; the spec breaks every tie by lay order alone.",
+      "families": [
+        "pip"
+      ]
+    },
+    {
+      "id": "Q7",
+      "condition": "GRADE orders the racked wheels.",
+      "effect": "The grading key is class minus 4 per ledgered sample with shifts ignored, computed from the ledger rather than the current settle the spec names.",
+      "families": [
+        "quell"
+      ]
+    },
+    {
+      "id": "Q8",
+      "condition": "A turning round recomputes a racked wheel's settle.",
+      "effect": "The wheel slumps off the rack to the back of the sill whenever the recomputed settle is below 8 units; the spec slumps only at 0 or less.",
+      "families": [
+        "swale"
+      ]
+    },
+    {
+      "id": "Q9",
+      "condition": "GRADE decides whether a listed wheel retires.",
+      "effect": "A wheel retires when its lifetime count of ledgered samples is 4 or more, so sill samples never count and samples before an earlier grading still count; the spec counts all samples since the last grading and resets at each grading.",
+      "families": [
+        "brand"
+      ]
+    },
+    {
+      "id": "Q10",
+      "condition": "A rack has slumped 3 or more wheels over its lifetime.",
+      "effect": "The turning round visits that rack after every rack with fewer than 3 lifetime slumps, and HALL lists it in that same position, keeled racks keeping opening order among themselves; the spec always uses plain opening order.",
+      "families": [
+        "keel"
+      ]
+    },
+    {
+      "id": "Q11",
+      "condition": "A slumped wheel is bedded back onto the very rack it slumped from before any further turning round has run.",
+      "effect": "Its settle is reset to its declared class on bedding; the spec says a slumped wheel keeps its settle.",
+      "families": [
+        "wake"
+      ]
+    },
+    {
+      "id": "Q12",
+      "condition": "GRADE finds a retirement-bound wheel that has been shifted at least 3 times since the last grading and flipped at least once after its latest shift.",
+      "effect": "The wheel is listed but not retired, and the spare window resets at each grading; the spec retires every qualifying wheel.",
+      "families": [
+        "hale"
+      ]
+    },
+    {
+      "id": "Q13",
+      "condition": "LAY names a wheel id that was previously retired by a grading.",
+      "effect": "The lay is accepted and the wheel returns to the sill with the new class and a fresh lay position, but keeps its lifetime sample and shift counts, ledger entries, flip parity, and racked-round age, so those still drive later tie-breaks, recomputes, and retirement; the spec rejects a retired id with DUP forever.",
+      "families": [
+        "revenant"
+      ]
+    }
+  ],
+  "unmapped_families": [
+    {
+      "family": "full_corpus_parity",
+      "reason": "Mixed held-out corpus of long generic sessions exercising many rules and reject paths together; no single quirk maps."
+    }
+  ],
+  "reader_questions": [
+    {
+      "id": "R1",
+      "type": "behavioural",
+      "question": "A fresh session runs: LAY wA 100, RACK R1 6, BED wA R1, TAP wA, TAP wA, LAY wB 92, BED wB R1, VIEW R1. Which wheel id is listed first on the ON R1 line?",
+      "answer": "wB",
+      "check": "exact",
+      "verification": "printf 'LAY wA 100\\nRACK R1 6\\nBED wA R1\\nTAP wA\\nTAP wA\\nLAY wB 92\\nBED wB R1\\nVIEW R1\\n' | .venv/bin/python builder/gold_cellarcore.py -> line 8: 'ON R1 wB wA' (trailer 'FIN 2 1 2 2 0 0 0 0'); repo/legacy/run gives the identical output."
+    },
+    {
+      "id": "R2",
+      "type": "behavioural",
+      "question": "A fresh session runs: RACK R1 4, LAY wA 10, LAY wB 20, BED wA R1, BED wB R1, TAP wA, TURN, VIEW R1. How many wheel ids appear on the ON R1 line after the round?",
+      "answer": "1",
+      "check": "exact",
+      "verification": "printf 'RACK R1 4\\nLAY wA 10\\nLAY wB 20\\nBED wA R1\\nBED wB R1\\nTAP wA\\nTURN\\nVIEW R1\\nHALL\\n' | .venv/bin/python builder/gold_cellarcore.py -> 'TR 1', 'RK R1', 'W wB', 'DN wA', then 'ON R1 wB' (one wheel), 'HALL R1', 'SILL wA', 'FIN 2 1 2 1 0 1 0 0'; repo/legacy/run gives the identical output."
+    },
+    {
+      "id": "R3",
+      "type": "locate",
+      "question": "Name the function that decides which of two wheels with an equal ordering key stands first in a listing.",
+      "quirk": "Q6"
+    }
+  ]
+}

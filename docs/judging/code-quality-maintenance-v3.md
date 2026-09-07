@@ -224,8 +224,13 @@ questions about the code from reading alone, the code carries its meaning on
 its surface. If it cannot, the answer is buried somewhere a reader must dig.
 
 - Reader: Claude Haiku 4.5 through the Claude Code CLI on the subscription,
-  extended thinking off, tools disabled, fresh session per read, read-only,
-  outside benchmark workspaces, raw receipts retained as for the panels.
+  extended thinking off (zero thinking budget, and any reported thinking
+  tokens reject the read), tools disabled, response schema passed to the CLI
+  for structured output, fresh session per read, read-only, outside
+  benchmark workspaces, raw receipts retained as for the panels. The
+  transport was smoke-tested on September 7, 2026 with a one-line function
+  outside the run directory: structured output returned, zero thinking
+  tokens, subscription billing confirmed.
 - Evidence: the spec, the README, and the reconstructed final source. No
   issue text, tests, transcripts, or labels.
 - Questions: three per task, frozen with the quirk key before any call. Two
@@ -361,14 +366,26 @@ rubric text names a model.
 6. Control 4 stands as written. Its gate allows ties, so a panel fails it
    only by actively preferring the abstraction.
 
+## Built and not yet run
+
+- `harness/maintenance_review_v3.py`: ten controls, three repeats, the
+  six-dimension schema, gates 1 to 17, probe and match calls, the
+  constrained reader with its thinking guard, the single-panel rule, and
+  control and quirk-key hash binding. Stages: prepare, calibrate, run,
+  probe, read, summarize. Offline tests cover validation, gates, scoring,
+  and both CLI parsers.
+- `docs/judging/quirk-keys-v3/`: quirk keys and reader questions for all 23
+  tasks. Every behavioural answer was produced by running the task's gold
+  implementation on a recorded command stream, and most were cross-checked
+  against the shipped legacy binary; the stream and confirming output are
+  stored in each question's verification field. Unmapped families are
+  listed per task with a reason, almost always the mixed corpus family.
+
 ## Not yet done
 
-- `harness/maintenance_review_v3.py` runner: ten controls, three repeats,
-  six-dimension schema, gates 1 to 16, probe and match calls, single-panel
-  rule, control and quirk-key hash binding.
-- Quirk keys and reader questions for the 22 tasks beyond the worked
-  example.
-- Constrained-reader runner (Haiku 4.5 via the Claude CLI) and its match
-  step.
-- Follow-up change generation for L3, per task.
-- Frozen protocol JSON.
+- Freeze: `prepare` has not been run, so no protocol JSON exists and no
+  hash is bound. Running it is the freezing act.
+- Calibration and every later stage.
+- L3 follow-up change generation, per task, and its worker runner.
+- The Codex transport for probe, match, and pair kinds was not smoke-tested;
+  the first Astra calibration call will exercise it.

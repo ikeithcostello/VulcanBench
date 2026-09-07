@@ -1,0 +1,92 @@
+{
+  "task": "legacy-payrollcore-binary-parity",
+  "protocol": "code-quality-maintenance-v3",
+  "sources": ["metadata.json decontamination_notes", "builder/gold_payrollcore.py", "tests/fixtures.json"],
+  "quirks": [
+    {
+      "id": "Q1",
+      "condition": "Status H record in state CA or NY whose period gross is strictly greater than 250000 cents",
+      "effect": "The top marginal federal rate on the portion above 400000 cents is 32% instead of the spec's 30%; status H elsewhere, other statuses in CA or NY, and a gross of exactly 250000 use 30%.",
+      "families": ["household_surtax"]
+    },
+    {
+      "id": "Q2",
+      "condition": "Any accepted record, judged on the employee's year-to-date gross accumulated before the record",
+      "effect": "If the prior year-to-date gross is below 1600000 cents the 6.2% levy is charged on the record's full gross, so the record that crosses the cap pays on all of it; once the prior year-to-date gross is at or above the cap the levy is 0. The spec prorates the crossing record to the portion under the cap.",
+      "families": ["levy_cap_crossing"]
+    },
+    {
+      "id": "Q3",
+      "condition": "Status M record",
+      "effect": "Federal tax is computed at the unrelieved rates and rounded half-even to a cent, then multiplied by 92% and rounded half-even again; the spec applies the 8% relief to the rates and rounds once to the nearest cent.",
+      "families": ["married_relief_order"]
+    },
+    {
+      "id": "Q4",
+      "condition": "State token SD",
+      "effect": "State tax is 0 cents, the same as the four documented zero-tax states TX, FL, WA, NV; the spec lists only those four, so SD would be taxed at 5%.",
+      "families": ["state_sd"]
+    },
+    {
+      "id": "Q5",
+      "condition": "Flags token containing both the letter X and the letter B, in any position",
+      "effect": "An extra 1% of gross, rounded half-up to a cent, is added to the levy regardless of the year-to-date cap; the spec says flags never affect withholding.",
+      "families": ["flag_recapture"]
+    },
+    {
+      "id": "Q6",
+      "condition": "Period token 27",
+      "effect": "The record is accepted and federal tax uses halved bracket thresholds of 50000 and 200000 cents; the spec allows only periods 01 to 26 and would reject with PERIOD.",
+      "families": ["bonus_period"]
+    },
+    {
+      "id": "Q7",
+      "condition": "Gross token equal to 0",
+      "effect": "The record is rejected with code GROSS and counted in the rejected column; the spec treats it as an accepted no-op with net 0.",
+      "families": ["zero_gross"]
+    },
+    {
+      "id": "Q8",
+      "condition": "Employee id that matches an earlier id in the batch ignoring letter case",
+      "effect": "Year-to-date gross accumulates under one shared key and the result line echoes the first-seen spelling of the id; the spec says ids are case-sensitive.",
+      "families": ["id_case_fold"]
+    },
+    {
+      "id": "Q9",
+      "condition": "Federal or state amount whose exact value lands on a half cent",
+      "effect": "Federal tax and state tax are rounded half-to-even to the cent while the levy and the recapture amount round half-up; the spec says nearest cent for all three, which a literal reading takes as half-up throughout.",
+      "families": ["rounding_regime"]
+    },
+    {
+      "id": "Q10",
+      "condition": "Record line with more than seven whitespace-separated tokens, or an FMT failure with an unusable id token",
+      "effect": "Tokens after the seventh are ignored and the record is processed normally; an FMT reject echoes the id token when it is 1 to 8 alphanumerics and eight question marks otherwise. The spec defines exactly seven fields.",
+      "families": ["full_corpus_parity"]
+    }
+  ],
+  "unmapped_families": [],
+  "reader_questions": [
+    {
+      "id": "R1",
+      "type": "behavioural",
+      "question": "A batch contains exactly one record line: P EMP001 05 0 S OH 000. If the engine rejects the record, what rejection code does it print? If the engine accepts it, answer with the word accepted.",
+      "answer": "GROSS",
+      "check": "exact",
+      "verification": "printf 'P EMP001 05 0 S OH 000\\n' | /Users/morganlinton/dev/VulcanBench/.venv/bin/python builder/gold_payrollcore.py (run from the task directory) printed 'R EMP001 GROSS' then 'X 0 1 0'."
+    },
+    {
+      "id": "R2",
+      "type": "behavioural",
+      "question": "A batch contains exactly two record lines, in this order: P BIG 05 1000000 S TX 000 and then P BIG 05 1000000 S TX 000 again. What net_cents value does the engine print on the result line for the second record?",
+      "answer": "688000",
+      "check": "exact",
+      "verification": "printf 'P BIG 05 1000000 S TX 000\\nP BIG 05 1000000 S TX 000\\n' | /Users/morganlinton/dev/VulcanBench/.venv/bin/python builder/gold_payrollcore.py (run from the task directory) printed 'W BIG 688000', 'W BIG 688000', 'X 2 0 1376000'; repo/legacy/run on the same stream printed the identical three lines."
+    },
+    {
+      "id": "R3",
+      "type": "locate",
+      "question": "Name the function that decides whether a record is charged the social levy, based on the employee's year-to-date gross.",
+      "quirk": "Q2"
+    }
+  ]
+}

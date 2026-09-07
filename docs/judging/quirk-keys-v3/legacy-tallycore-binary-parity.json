@@ -1,0 +1,97 @@
+{
+  "task": "legacy-tallycore-binary-parity",
+  "protocol": "code-quality-maintenance-v3",
+  "sources": [
+    "metadata.json decontamination_notes",
+    "builder/gold_tallycore.py",
+    "tests/fixtures.json"
+  ],
+  "quirks": [
+    {
+      "id": "Q1",
+      "condition": "A recount (W) in any round after the first.",
+      "effect": "Each candidate's tally is seeded with floor(that candidate's final tally in the previous recount / 4), where the final tally is the tally at elimination or, for the winner, at the end; round 1 seeds are zero. The running-leader path never uses the seed. The spec says rounds are independent.",
+      "families": [
+        "momentum_carryover"
+      ]
+    },
+    {
+      "id": "Q2",
+      "condition": "Two or more surviving candidates tie for the fewest votes during a recount.",
+      "effect": "The candidate with the longest id is eliminated first; among equal lengths, the last registered. The spec breaks ties by last registered only.",
+      "families": [
+        "longid_tiebreak"
+      ]
+    },
+    {
+      "id": "Q3",
+      "condition": "During a recount, a ballot that ranks every registered candidate.",
+      "effect": "It counts 2 votes while it stands on its first choice and 1 vote after transferring to a later choice; the running-leader path counts every ballot as 1.",
+      "families": [
+        "full_rank_bonus"
+      ]
+    },
+    {
+      "id": "Q4",
+      "condition": "During a recount, a ballot with exactly two entries whose first choice is eliminated.",
+      "effect": "The ballot is discarded instead of transferring to its second choice; ballots of other lengths transfer as the spec describes.",
+      "families": [
+        "two_cand_exhaustion"
+      ]
+    },
+    {
+      "id": "Q5",
+      "condition": "A V ranking that contains an entry naming an unregistered candidate.",
+      "effect": "The unknown entry is dropped and the remaining entries are processed; the ballot is rejected N <entry> CAND, echoing the first unknown entry, only when no entry survives. The spec rejects on the first unknown entry.",
+      "families": [
+        "unknown_entry"
+      ]
+    },
+    {
+      "id": "Q6",
+      "condition": "A candidate id that differs only in letter case from one already registered, in a C command or a ballot entry.",
+      "effect": "It refers to the existing candidate, and every reply reports the first-seen spelling; the spec treats ids as case-sensitive.",
+      "families": [
+        "case_fold"
+      ]
+    },
+    {
+      "id": "Q7",
+      "condition": "A C or V command with extra tokens after the documented ones.",
+      "effect": "The extra tokens are ignored and the command is processed (W stays strict); the spec rejects them as malformed.",
+      "families": [
+        "lenient_tokens"
+      ]
+    }
+  ],
+  "unmapped_families": [
+    {
+      "family": "full_corpus_parity",
+      "reason": "Held-out mixed corpus exercising every quirk together with spec-accurate paths; no single quirk maps to it."
+    }
+  ],
+  "reader_questions": [
+    {
+      "id": "R1",
+      "type": "behavioural",
+      "question": "Stream: C Al, C Bob, C Cy, V Al, V Bob, V Cy, W. Which candidate does the first ELIM line of the recount name?",
+      "answer": "Bob",
+      "check": "exact",
+      "verification": "Gold builder/gold_tallycore.py process() and repo/legacy/run on stream ['C Al', 'C Bob', 'C Cy', 'V Al', 'V Bob', 'V Cy', 'W']; recount replies 'ELIM Bob', 'ELIM Cy', 'WIN Al'."
+    },
+    {
+      "id": "R2",
+      "type": "behavioural",
+      "question": "Stream: C A, C B, then eight ballots V A, then one ballot V B, then W, then one ballot V B, then W. Which candidate does the second recount's WIN line name?",
+      "answer": "A",
+      "check": "exact",
+      "verification": "Gold builder/gold_tallycore.py process() and repo/legacy/run on stream ['C A', 'C B'] + ['V A'] * 8 + ['V B', 'W', 'V B', 'W']; first recount 'ELIM B', 'WIN A'; second recount 'ELIM B', 'WIN A'; trailer 'X 2 10 2 0'."
+    },
+    {
+      "id": "R3",
+      "type": "locate",
+      "question": "Name the function that decides whether a ballot whose first choice was just eliminated is transferred or dropped.",
+      "quirk": "Q4"
+    }
+  ]
+}

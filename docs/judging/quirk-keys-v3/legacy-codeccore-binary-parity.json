@@ -1,0 +1,109 @@
+{
+  "task": "legacy-codeccore-binary-parity",
+  "protocol": "code-quality-maintenance-v3",
+  "sources": [
+    "metadata.json decontamination_notes",
+    "builder/gold_codeccore.py",
+    "tests/fixtures.json"
+  ],
+  "quirks": [
+    {
+      "id": "Q1",
+      "condition": "Encode command whose memo is 16 to 20 printable characters long.",
+      "effect": "The record is produced with the memo stored as its first 12 characters, a tilde, and its last 2 characters (15 stored characters); the spec rejects any memo over 15 characters with R FMT. Memos of 21 or more characters are still rejected, and a decode of a squeezed record returns the 15 stored characters, not the original memo.",
+      "families": [
+        "memo_squeeze"
+      ]
+    },
+    {
+      "id": "Q2",
+      "condition": "Encode command whose amount is strictly greater than 10000000 cents and whose date has month 01.",
+      "effect": "The flag byte at column 46 is H instead of the spec's constant N, and the check character is computed over the record including that H, so both bytes 46 and 47 differ from the spec's record; an amount of exactly 10000000 cents or any month other than 01 keeps N. On decode the flag byte is not validated, so records carrying H decode normally.",
+      "families": [
+        "january_audit_flag"
+      ]
+    },
+    {
+      "id": "Q3",
+      "condition": "Decode of a record whose first two columns spell vx in any letter case.",
+      "effect": "The prefix is accepted case-insensitively, and the check character is verified over the record with the prefix uppercased and every other byte as received; the spec requires the literal VX and would reject with R FMT. Any other two letters still reject with R FMT.",
+      "families": [
+        "prefix_case_leniency"
+      ]
+    },
+    {
+      "id": "Q4",
+      "condition": "Decode of a record whose 10-column account field is padded with spaces, asterisks, or a mix of both, on the left, the right, or both sides.",
+      "effect": "All leading and trailing asterisks and spaces are stripped and the remaining 1 to 10 alphanumeric characters form the account; the check character is verified over the raw bytes as received. A field that is all padding rejects with R FMT. The spec accepts only left padding with asterisks.",
+      "families": [
+        "acct_padding_leniency"
+      ]
+    },
+    {
+      "id": "Q5",
+      "condition": "Decode of a record whose 8-column date field is exactly 00000000.",
+      "effect": "The record is accepted and the date is printed verbatim as 00000000; the spec requires a real calendar date on decode. Encode still rejects 00000000 with R FMT, and any other invalid date such as 00000001 still rejects on decode.",
+      "families": [
+        "null_date_decode"
+      ]
+    },
+    {
+      "id": "Q6",
+      "condition": "Decode of a record whose 15-column memo field ends in trailing commas, dots, or any mix of the two.",
+      "effect": "Trailing commas are stripped as padding in the same way as trailing dots, so a memo field of all commas decodes as the empty memo (printed as _); the spec recognises only dots as padding and would reject.",
+      "families": [
+        "comma_memo_padding"
+      ]
+    },
+    {
+      "id": "Q7",
+      "condition": "Decode of a record whose column 47 (the check character) is the letter Z.",
+      "effect": "The check character test is skipped and the record proceeds to field validation, so a record whose computed check character is not Z still decodes; the spec would reject it with R CHK. Field errors such as an invalid date still reject with R FMT, and any other wrong check character still rejects with R CHK.",
+      "families": [
+        "check_override"
+      ]
+    },
+    {
+      "id": "Q8",
+      "condition": "Encode command with more than 4 argument tokens, or decode command whose argument is longer than 48 characters and has a space at position 48.",
+      "effect": "Extra encode tokens after the memo are ignored, and decode text after column 48 is ignored when a space separates it from the record; the spec allows exactly 4 encode fields and requires the decode argument to be exactly 48 characters (a longer argument with no space at position 48 still rejects with R LEN).",
+      "families": [
+        "lenient_tokens"
+      ]
+    }
+  ],
+  "unmapped_families": [
+    {
+      "family": "round_trips",
+      "reason": "Mixed encode-then-decode and decode-then-encode batches that each exercise several asymmetries at once (memo squeeze, January flag, space and comma padding, prefix case, null date, and check override), so no single quirk maps."
+    },
+    {
+      "family": "full_corpus_parity",
+      "reason": "Held-out 150-command mixed parity corpus spanning every quirk and the spec-accurate paths."
+    }
+  ],
+  "reader_questions": [
+    {
+      "id": "R1",
+      "type": "behavioural",
+      "question": "A single encode command is issued: E JAN1 10000001 20250115 _ (account JAN1, amount 10000001 cents, date 15 January 2025, empty memo). What character does the engine place at column 46 of the produced record (the column immediately before the check character)?",
+      "answer": "H",
+      "check": "exact",
+      "verification": "printf 'E JAN1 10000001 20250115 _\\n' | .venv/bin/python builder/gold_codeccore.py -> V VX******JAN10001000000120250115...............H5 / X 1 0 0; repo/legacy/run gives the identical two lines. Column 46 is H (the spec's constant N would give ...............NU)."
+    },
+    {
+      "id": "R2",
+      "type": "behavioural",
+      "question": "A single decode command is issued for the 48-character record VX****ACCT010000000077720260214ovr2...........NZ. Its last column is the letter Z, while the weighted check sum over columns 0 to 46 of this record yields the character B. What is the first token of the engine's reply line?",
+      "answer": "P",
+      "check": "exact",
+      "verification": "printf 'D VX****ACCT010000000077720260214ovr2...........NZ\\n' | .venv/bin/python builder/gold_codeccore.py -> P ACCT01 777 20260214 ovr2 / X 0 1 0; repo/legacy/run gives the identical two lines. check_char() over this record returns B, so a spec-faithful reader would answer R (R CHK)."
+    },
+    {
+      "id": "R3",
+      "type": "locate",
+      "question": "Name the function that decides how a memo of 16 to 20 characters is stored in the record on encode.",
+      "quirk": "Q1"
+    }
+  ]
+}

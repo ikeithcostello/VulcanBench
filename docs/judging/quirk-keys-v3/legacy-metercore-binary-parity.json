@@ -1,0 +1,82 @@
+{
+  "task": "legacy-metercore-binary-parity",
+  "protocol": "code-quality-maintenance-v3",
+  "sources": ["metadata.json decontamination_notes", "builder/gold_metercore.py", "tests/fixtures.json"],
+  "quirks": [
+    {
+      "id": "Q1",
+      "condition": "A band N reading in month 12, 01, or 02 whose kwh (in whole or in part) lands in tier 1, that is within the account's first 500 cumulative kwh.",
+      "effect": "The tier-1 portion of that reading is billed at 60% of the tier-1 rate of 140 tenths of a cent per kwh; kwh of the same reading falling in tier 2 or tier 3 stay at the documented 70%, and the spec gives 70% for band N in every month and tier.",
+      "families": ["winter_night_tier1"]
+    },
+    {
+      "id": "Q2",
+      "condition": "Any accepted reading with meter type L.",
+      "effect": "Every slice of the reading is billed at 103% of its rate (a 3% uplift applied to the cost), while the account's cumulative tier counter and the reported total_kwh advance by the raw kwh only; the spec says the meter type does not affect the bill.",
+      "families": ["meter_uplift"]
+    },
+    {
+      "id": "Q3",
+      "condition": "A reading in month 06, 07, 08, or 09 with kwh landing in tier 2 (cumulative 500 to 2000 kwh).",
+      "effect": "The tier-2 slice carries the 10% summer surcharge (110%) in addition to the tier-3 slice; the spec applies the surcharge to tier-3 energy only.",
+      "families": ["summer_tier2"]
+    },
+    {
+      "id": "Q4",
+      "condition": "Any accepted reading whose cost is not an exact whole number of cents, including one that spans two or more tiers.",
+      "effect": "The per-slice costs are computed in exact integer arithmetic (kwh times rate in tenths times uplift percent times season percent times band percent, denominator 10000000 per cent), summed across the slices, and rounded once per reading to whole cents with ties going to the even cent; the spec says round to the nearest cent and a per-slice half-up rounding gives different totals on ties and near-ties.",
+      "families": ["rounding_regime"]
+    },
+    {
+      "id": "Q5",
+      "condition": "Two accepted readings whose account ids differ only in letter case.",
+      "effect": "They accumulate into one account keyed on the upper-cased id, and the B line reports the spelling of the first accepted nonzero reading; the spec treats account ids as case-sensitive and distinct.",
+      "families": ["account_casefold"]
+    },
+    {
+      "id": "Q6",
+      "condition": "A reading whose month token is 13.",
+      "effect": "It is accepted and billed as month 01 (a year-wrap convention), so it counts as a winter month for the band N tier-1 rule; month 00 and months 14 and above are rejected with MONTH, and the spec allows only 01 to 12.",
+      "families": ["month_wrap"]
+    },
+    {
+      "id": "Q7",
+      "condition": "An otherwise valid reading with kwh 0.",
+      "effect": "The reading is discarded before the account is touched: it is not rejected, does not register the account, does not fix its first-seen position, and yields no B line if the account never receives a nonzero reading; the spec calls it a valid no-op reading, which would still register the account with a 0 bill.",
+      "families": ["zero_kwh_skip"]
+    },
+    {
+      "id": "Q8",
+      "condition": "A reading line with more than six whitespace-separated tokens whose first six tokens are valid.",
+      "effect": "The line is accepted and the trailing tokens are ignored; lines with fewer than six tokens are still rejected with FMT, and the spec requires exactly six tokens.",
+      "families": ["lenient_tokens"]
+    }
+  ],
+  "unmapped_families": [
+    {"family": "full_corpus_parity", "reason": "Mixed corpus parity: two held-out 120-reading seeded batches that combine every quirk with invalid lines, so no single quirk maps to the family."}
+  ],
+  "reader_questions": [
+    {
+      "id": "R1",
+      "type": "behavioural",
+      "question": "A batch contains a single reading: account ACME, month 12, 300 kwh, band N, meter S. What bill_cents does the B line for ACME show?",
+      "answer": "2520",
+      "check": "exact",
+      "verification": "printf 'M ACME 12 300 N S\\n' | /Users/morganlinton/dev/VulcanBench/.venv/bin/python builder/gold_metercore.py (run from the task dir) printed 'B ACME 300 2520' then 'X 1 0 2520'; repo/legacy/run on the same stream printed the identical lines."
+    },
+    {
+      "id": "R2",
+      "type": "behavioural",
+      "question": "A batch contains three readings in this order: 'M AA 04 0 D S', then 'M BB 04 100 D S', then 'M AA 05 50 D S'. Which account id appears on the first B line of the output?",
+      "answer": "BB",
+      "check": "exact",
+      "verification": "printf 'M AA 04 0 D S\\nM BB 04 100 D S\\nM AA 05 50 D S\\n' | /Users/morganlinton/dev/VulcanBench/.venv/bin/python builder/gold_metercore.py (run from the task dir) printed 'B BB 100 1400', 'B AA 50 700', 'X 2 0 2100'; repo/legacy/run on the same stream printed the identical lines."
+    },
+    {
+      "id": "R3",
+      "type": "locate",
+      "question": "Name the function that rounds a reading's cost to whole cents before it is added to the account's bill.",
+      "quirk": "Q4"
+    }
+  ]
+}

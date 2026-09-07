@@ -1,0 +1,113 @@
+{
+  "task": "legacy-quotacore-binary-parity",
+  "protocol": "code-quality-maintenance-v3",
+  "sources": [
+    "metadata.json decontamination_notes",
+    "builder/gold_quotacore.py",
+    "tests/fixtures.json"
+  ],
+  "quirks": [
+    {
+      "id": "Q1",
+      "condition": "The first accepted non-zero event for a key, when its calls fit entirely within the tier quota.",
+      "effect": "The key banks calls divided by 10 (integer floor) as extra quota, so that event's quota_left and all later quota arithmetic for the key include the banked amount.",
+      "families": [
+        "burst_bank"
+      ]
+    },
+    {
+      "id": "Q2",
+      "condition": "An accepted event on a key that has already consumed part of its quota (used greater than 0 and below the limit) and whose calls push the key past the limit.",
+      "effect": "The event's entire call count is billed at the overage rate; a key with no prior consumption that crosses in one event is billed only on the portion beyond the limit.",
+      "families": [
+        "crossing_rate"
+      ]
+    },
+    {
+      "id": "Q3",
+      "condition": "An event billed on tier P whose region, after upper-casing, is BR or IN.",
+      "effect": "Overage is priced at 5 cents per 100-call block instead of 6.",
+      "families": [
+        "growth_rate"
+      ]
+    },
+    {
+      "id": "Q4",
+      "condition": "A billed call count whose remainder modulo 100 is exactly 50.",
+      "effect": "The number of blocks is the count divided by 100 rounded down; every other remainder rounds up to the next block.",
+      "families": [
+        "round_fifty"
+      ]
+    },
+    {
+      "id": "Q5",
+      "condition": "A later event for a known key carrying tier S when the key is on F, or tier P when the key is on S.",
+      "effect": "The event is accepted, the key's tier becomes the new one with its larger quota, and calls already consumed carry over; any other tier change (downgrades, or F directly to P) is rejected TIER echoing the first-seen key spelling.",
+      "families": [
+        "tier_upgrade"
+      ]
+    },
+    {
+      "id": "Q6",
+      "condition": "A region token of two letters in any mix of case.",
+      "effect": "The token is accepted and upper-cased before any region comparison.",
+      "families": [
+        "region_case"
+      ]
+    },
+    {
+      "id": "Q7",
+      "condition": "An event whose calls token parses to 0, after the key, calls, tier, and region tokens have passed validation.",
+      "effect": "No output line is written and neither the key's state nor the accepted or rejected counters change.",
+      "families": [
+        "zero_calls"
+      ]
+    },
+    {
+      "id": "Q8",
+      "condition": "A key that differs only in letter case from one already seen in the session.",
+      "effect": "Consumption, tier, and banked quota accumulate on the same key and output lines echo the first-seen spelling.",
+      "families": [
+        "key_case"
+      ]
+    },
+    {
+      "id": "Q9",
+      "condition": "A Q command with more than five tokens.",
+      "effect": "The extra tokens are ignored and the event runs normally; FMT rejects echo the key token, or ???????? when it is missing or malformed.",
+      "families": [
+        "trailing"
+      ]
+    }
+  ],
+  "unmapped_families": [
+    {
+      "family": "full_corpus_parity",
+      "reason": "Two mixed 150+ event corpora exercising every quirk above together with the documented behaviour; no single quirk maps."
+    }
+  ],
+  "reader_questions": [
+    {
+      "id": "R1",
+      "type": "behavioural",
+      "question": "The first event for a new key on tier F, region US, carries 5000 calls. What quota_left does the B line report?",
+      "answer": "5500",
+      "check": "exact",
+      "verification": "printf 'Q KEY001 5000 F US\\n' | .venv/bin/python builder/gold_quotacore.py -> B KEY001 0 5500 / X 1 0 0"
+    },
+    {
+      "id": "R2",
+      "type": "behavioural",
+      "question": "The first event for a new key on tier P carries 1200000 calls with region token in (lower case). What charge in cents does the B line report?",
+      "answer": "10000",
+      "check": "exact",
+      "verification": "printf 'Q acme 1200000 P in\\n' | .venv/bin/python builder/gold_quotacore.py -> B acme 10000 0 / X 1 0 10000"
+    },
+    {
+      "id": "R3",
+      "type": "locate",
+      "question": "Name the function that converts a billed call count into a number of 100-call blocks.",
+      "quirk": "Q4"
+    }
+  ]
+}

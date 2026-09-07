@@ -1,0 +1,106 @@
+{
+  "task": "legacy-snapcore-binary-parity",
+  "protocol": "code-quality-maintenance-v3",
+  "sources": [
+    "metadata.json decontamination_notes",
+    "builder/gold_snapcore.py",
+    "tests/fixtures.json"
+  ],
+  "quirks": [
+    {
+      "id": "Q1",
+      "condition": "A load whose version tag is Z0.",
+      "effect": "The blob is accepted with its pairs split on commas instead of semicolons, and the checksum is computed over the Z0 body; the serializer only ever emits Z1. The spec rejects any tag other than Z1 with R VER.",
+      "families": [
+        "z0_dialect"
+      ]
+    },
+    {
+      "id": "Q2",
+      "condition": "A loaded blob contains the same key more than once.",
+      "effect": "The load is accepted; the key keeps the position and spelling of its first occurrence and takes the value of its last occurrence. The spec rejects duplicates with R FMT.",
+      "families": [
+        "duplicate_keys"
+      ]
+    },
+    {
+      "id": "Q3",
+      "condition": "The first serialize after a load that was a Z0 blob or that collapsed duplicate keys.",
+      "effect": "The live insertion order is rebuilt in ascending alphabetical key order before the blob is written, and that order stays as the baseline for later commands; serializes after any other load keep insertion order.",
+      "families": [
+        "alpha_rebuild"
+      ]
+    },
+    {
+      "id": "Q4",
+      "condition": "Serializing a value of exactly 12 characters.",
+      "effect": "The blob writes only the first 10 characters of the value, with the checksum computed over the truncated bytes, so the blob validates but reloading it loses the last 2 characters; G still returns all 12. Values of 11 or fewer characters are written in full.",
+      "families": [
+        "value_truncation",
+        "round_trips"
+      ]
+    },
+    {
+      "id": "Q5",
+      "condition": "A loaded blob contains keys that differ only in letter case.",
+      "effect": "The loader treats them as one key for duplicate collapsing (first spelling and position, last value), while live P and G stay case-sensitive.",
+      "families": [
+        "key_case_fold"
+      ]
+    },
+    {
+      "id": "Q6",
+      "condition": "A load of a blob with a correct checksum and an empty pair section (Z1||checksum).",
+      "effect": "The load is accepted, the live state is cleared, and the reply is OK 0. The spec requires at least one pair and rejects R FMT.",
+      "families": [
+        "empty_blob"
+      ]
+    },
+    {
+      "id": "Q7",
+      "condition": "Any successful load.",
+      "effect": "The OK count reports the number of pairs present in the blob before duplicate collapsing, not the number of live keys afterwards.",
+      "families": [
+        "load_count"
+      ]
+    },
+    {
+      "id": "Q8",
+      "condition": "A P or G command with extra tokens after the documented ones.",
+      "effect": "The extra tokens are ignored and the command is processed; the spec rejects them as malformed.",
+      "families": [
+        "lenient_tokens"
+      ]
+    }
+  ],
+  "unmapped_families": [
+    {
+      "family": "full_corpus_parity",
+      "reason": "Held-out mixed corpus exercising every quirk together with spec-accurate paths; no single quirk maps to it."
+    }
+  ],
+  "reader_questions": [
+    {
+      "id": "R1",
+      "type": "behavioural",
+      "question": "Starting from an empty store, the command L Z1|k1=x;K1=y;k2=z|W is issued (the checksum W is correct). What count does the reply report?",
+      "answer": "3",
+      "check": "exact",
+      "verification": "Gold builder/gold_snapcore.py process() and repo/legacy/run on stream ['L Z1|k1=x;K1=y;k2=z|W', 'S']; replies 'OK 3' then 'B Z1|k1=y;k2=z|4'."
+    },
+    {
+      "id": "R2",
+      "type": "behavioural",
+      "question": "Starting from an empty store, the command L Z0|zz=1,aa=2|B is issued (the checksum B is correct), then S. What is the first key written in the blob that S returns?",
+      "answer": "aa",
+      "check": "exact",
+      "verification": "Gold builder/gold_snapcore.py process() and repo/legacy/run on stream ['L Z0|zz=1,aa=2|B', 'S']; replies 'OK 2' then 'B Z1|aa=2;zz=1|B'."
+    },
+    {
+      "id": "R3",
+      "type": "locate",
+      "question": "Name the function that decides how many characters of a value are written into a serialized blob.",
+      "quirk": "Q4"
+    }
+  ]
+}

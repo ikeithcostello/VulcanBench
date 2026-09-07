@@ -1,0 +1,76 @@
+{
+  "task": "legacy-pacecore-binary-parity",
+  "protocol": "code-quality-maintenance-v3",
+  "sources": ["metadata.json decontamination_notes", "builder/gold_pacecore.py", "tests/fixtures.json"],
+  "quirks": [
+    {
+      "id": "Q1",
+      "condition": "Any true-up (U command) on a known campaign.",
+      "effect": "The reported total is not the sum of the day's P grants: each hour's grants are first clamped to a flat slice of daily budget divided by 24 (integer floor, ignoring yesterday's carry and any within-day rollover) and the sum of the clamped hours is reported; the carry is then computed from that clamped total as max(0, daily minus clamped total) capped at daily divided by 5, so a back-loaded day reports a smaller total and a larger carry than the spec's sum-of-grants rule gives.",
+      "families": ["audit_clamp", "multiday_carry"]
+    },
+    {
+      "id": "Q2",
+      "condition": "A true-up whose uncapped carry (daily minus clamped total) exceeds the 20 percent cap (daily divided by 5).",
+      "effect": "The excess above the cap is added to a hidden per-campaign debt counter in cents; the next time the campaign accrues hour 00, that hour's slice is reduced by the whole debt (floored at 0) and the debt is reset to 0, while other hours accrue their full slice; debt stacks across true-ups and survives days in which hour 00 never accrues. The spec says the excess is simply discarded.",
+      "families": ["rollover_debt", "multiday_carry"]
+    },
+    {
+      "id": "Q3",
+      "condition": "A spend request in hours 00 to 05 (inclusive) for a campaign whose daily budget is at least 1,000,000 cents.",
+      "effect": "The grant is limited to the available allowance divided by 2 (integer floor) instead of the full available allowance; the withheld half stays available for later requests. Budgets of 999,999 cents or less and hours 06 onward use the full allowance as the spec says.",
+      "families": ["overnight_damper"]
+    },
+    {
+      "id": "Q4",
+      "condition": "A spend request whose requested amount exactly equals the applicable cap (the available allowance, or its halved value under Q3).",
+      "effect": "The request is granted in full and the hour is marked exhausted; every further request for the same hour is rejected with N <camp> REQ until the hour advances or a true-up runs. A request that overshoots the cap does not set the mark, and later same-hour requests then grant 0 as the spec says.",
+      "families": ["exact_exhaustion"]
+    },
+    {
+      "id": "Q5",
+      "condition": "A spend request whose hour token is a single digit (0 to 9).",
+      "effect": "The token is accepted and treated as that hour; the spec requires exactly two digits and would reject it with N <camp> HOUR. Tokens of three or more digits or above 23 are still rejected HOUR.",
+      "families": ["one_digit_hours"]
+    },
+    {
+      "id": "Q6",
+      "condition": "A campaign id that differs only in letter case from one already created.",
+      "effect": "Campaign ids are folded to a single case for lookup, so the create is rejected N <camp> DUP and spends and true-ups under any casing address the first-seen campaign; reject lines still echo the token as typed. The spec says ids are case-sensitive.",
+      "families": ["case_fold"]
+    },
+    {
+      "id": "Q7",
+      "condition": "A C, S, or U command carrying more tokens than the documented arity.",
+      "effect": "The extra trailing tokens are ignored and the command is processed normally; the spec says extra tokens are rejected N <camp> FMT. Too few tokens are still rejected FMT.",
+      "families": ["lenient_tokens"]
+    }
+  ],
+  "unmapped_families": [
+    {"family": "full_corpus_parity", "reason": "mixed corpus parity: two held-out seeded 155 to 160 command corpora interleaving every quirk, several true-ups, rejects, and cross-case ids; no single quirk maps"}
+  ],
+  "reader_questions": [
+    {
+      "id": "R1",
+      "type": "behavioural",
+      "question": "A campaign a is created with a daily budget of 120000 cents. Its only spend request of the day is for hour 23 asking for 110000 cents, which is granted in full. A true-up for a then runs. What total does the U reply line report? Give the number only.",
+      "answer": "5000",
+      "check": "exact",
+      "verification": "printf 'C a 120000\\nS a 23 110000\\nU a\\n' | /Users/morganlinton/dev/VulcanBench/.venv/bin/python builder/gold_pacecore.py printed: OK 1 / P 110000 / U 5000 24000 / X 1 1 1 0 (third line 'U 5000 24000' confirms 5000; repo/legacy/run gives the identical output)"
+    },
+    {
+      "id": "R2",
+      "type": "behavioural",
+      "question": "A campaign a is created with a daily budget of 240000 cents. A spend request for hour 00 asks for 10000 cents. A second spend request for hour 00 then asks for 5 cents. Is the second request granted or rejected? Answer with the single word granted or rejected.",
+      "answer": "rejected",
+      "check": "exact",
+      "verification": "printf 'C a 240000\\nS a 00 10000\\nS a 00 5\\n' | /Users/morganlinton/dev/VulcanBench/.venv/bin/python builder/gold_pacecore.py printed: OK 1 / P 10000 / N a REQ / X 1 1 0 1 (third line 'N a REQ' confirms the second request is rejected; repo/legacy/run gives the identical output)"
+    },
+    {
+      "id": "R3",
+      "type": "locate",
+      "question": "Name the function that clamps each hour's grants to a flat per-hour slice when computing the total reported by a true-up.",
+      "quirk": "Q1"
+    }
+  ]
+}

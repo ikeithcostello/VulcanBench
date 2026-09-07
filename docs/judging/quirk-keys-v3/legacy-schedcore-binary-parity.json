@@ -1,0 +1,97 @@
+{
+  "task": "legacy-schedcore-binary-parity",
+  "protocol": "code-quality-maintenance-v3",
+  "sources": [
+    "metadata.json decontamination_notes",
+    "builder/gold_schedcore.py",
+    "tests/fixtures.json"
+  ],
+  "quirks": [
+    {
+      "id": "Q1",
+      "condition": "A G choosing between ready jobs of equal effective priority when at least one of them has been invalidated by F.",
+      "effect": "Invalidation replaces the job's ordering key with a value below every definition-order key, most recent invalidation lowest, so the most recently invalidated job runs first and any invalidated job runs ahead of a never-invalidated job of the same priority.",
+      "families": [
+        "retry_tie"
+      ]
+    },
+    {
+      "id": "Q2",
+      "condition": "A job awaiting rerun after F that has been invalidated two or more times in the session.",
+      "effect": "Its effective priority on that rerun is its defined priority minus 7 for each invalidation beyond the first, floored at 1.",
+      "families": [
+        "double_penalty"
+      ]
+    },
+    {
+      "id": "Q3",
+      "condition": "A job being scheduled for the first time (not awaiting a rerun) whose defined priority is a multiple of 10 and which has two or more distinct dependencies.",
+      "effect": "Its effective priority is the defined priority plus 1; the increment does not apply when the job is rerun after F.",
+      "families": [
+        "fanin_boost"
+      ]
+    },
+    {
+      "id": "Q4",
+      "condition": "At the end of any G, a job not yet executed that names a dependency not defined in the session so far.",
+      "effect": "The job is flagged and never scheduled by any later G, even after the dependency is defined and executed; it continues to be counted in GEND's blocked figure.",
+      "families": [
+        "stale_dep"
+      ]
+    },
+    {
+      "id": "Q5",
+      "condition": "A J command whose dependency list repeats an id (compared after case folding).",
+      "effect": "The repeats are collapsed to one entry and the job is accepted; the collapsed count is what the fan-in rule sees.",
+      "families": [
+        "dup_deps"
+      ]
+    },
+    {
+      "id": "Q6",
+      "condition": "A job id or dependency reference that differs only in letter case from a job already defined.",
+      "effect": "It refers to the same job; output lines echo the first-seen spelling, and redefining under a different case is rejected DUP echoing that spelling.",
+      "families": [
+        "job_case"
+      ]
+    },
+    {
+      "id": "Q7",
+      "condition": "A J, F, or G command carrying more tokens than documented.",
+      "effect": "The extra tokens are ignored, the dependency list being exactly the fourth whitespace token of J; FMT rejects echo the job token, or ???????? when it is missing or malformed.",
+      "families": [
+        "trailing"
+      ]
+    }
+  ],
+  "unmapped_families": [
+    {
+      "family": "full_corpus_parity",
+      "reason": "Two mixed 150+ command corpora exercising every quirk above together with the documented behaviour; no single quirk maps."
+    }
+  ],
+  "reader_questions": [
+    {
+      "id": "R1",
+      "type": "behavioural",
+      "question": "Job A1 is defined with priority 50 and no dependencies. Then: G, F A1, G, F A1. Then job B1 is defined with priority 48 and no dependencies, and G runs. Which job does the first E line of that final G name?",
+      "answer": "B1",
+      "check": "exact",
+      "verification": "printf 'J A1 50 0\\nG\\nF A1\\nG\\nF A1\\nJ B1 48 0\\nG\\n' | .venv/bin/python builder/gold_schedcore.py -> ... OK 1 / OK 2 / E B1 / E A1 / GEND 2 0 / X 2 4 2 0"
+    },
+    {
+      "id": "R2",
+      "type": "behavioural",
+      "question": "Job A1 is defined with priority 50 depending on B1, which is not yet defined. G runs. Then B1 is defined with priority 60 and no dependencies, and G runs twice more. What blocked count does the last GEND line carry?",
+      "answer": "1",
+      "check": "exact",
+      "verification": "printf 'J A1 50 B1\\nG\\nJ B1 60 0\\nG\\nG\\n' | .venv/bin/python builder/gold_schedcore.py -> OK 1 / GEND 0 1 / OK 2 / E B1 / GEND 1 1 / GEND 0 1 / X 2 1 0 0"
+    },
+    {
+      "id": "R3",
+      "type": "locate",
+      "question": "Name the function that computes the priority used to rank ready jobs inside G.",
+      "quirk": "Q3"
+    }
+  ]
+}

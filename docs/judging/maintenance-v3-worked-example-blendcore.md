@@ -47,7 +47,7 @@ rows above whose family it passed originally.
 1. Behavioural. A tank holds 1,015 tenths. A dispense asks for 1,030 tenths.
    How much is the job credited? Answer: 1015 (short pour; the shortfall of
    15 is within the 20 margin). Host checks the number.
-2. Behavioural. Two dispenses of 2,000 tenths each of pigment "Wbase-7" come
+2. Behavioural. Two dispenses of 2,000 tenths each of pigment "Wbase7" from a tank filled with 100,000 tenths come
    from one tank, then a reconcile runs. Is the book written up or down?
    Answer: up (4 tenths base allowance per pour, doubled to 8, 16 in total,
    below the 50 write-off line, so the reconcile tops up). Host checks the
