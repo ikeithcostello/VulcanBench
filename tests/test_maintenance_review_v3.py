@@ -55,8 +55,9 @@ def test_probe_match_and_reader_validation():
         v3.validate("match", {"rationale": "r", "matches": [{"quirk": "Q1", "status": "missed", "departure": 0, "reason": "x"}]}, payload)
     questions = {"questions": [{"id": "R1", "question": "q"}, {"id": "R2", "question": "q"}]}
     v3.validate("reader", {"answers": [{"id": "R1", "answer": "59"}, {"id": "R2", "answer": "cannot tell"}]}, questions)
-    with pytest.raises(ValueError, match="every question once"):
-        v3.validate("reader", {"answers": [{"id": "R2", "answer": "59"}, {"id": "R1", "answer": "x"}]}, questions)
+    v3.validate("reader", {"answers": [{"id": "R2", "answer": "59"}, {"id": "R1", "answer": "x"}]}, questions)
+    with pytest.raises(ValueError, match="exactly once"):
+        v3.validate("reader", {"answers": [{"id": "R1", "answer": "59"}, {"id": "R1", "answer": "x"}]}, questions)
 
 
 def test_answer_checking_normalizes_and_supports_contains():
@@ -159,8 +160,9 @@ def test_claude_parse_accepts_structured_output_and_fenced_text_without_a_score(
     assert vote["answers"] == [{"id": "R1", "answer": "5"}] and vote["thinking_tokens"] == 0
     fenced = '```json\n{"answers": [{"id": "R1", "answer": "5"}]}\n```'
     assert v3.parse_claude_stream(claude_stream(result_text=fenced, thinking=190))["thinking_tokens"] == 190
+    assert v3.parse_claude_stream(claude_stream(structured={"a": 1}, tools=["StructuredOutput"]))["a"] == 1
     with pytest.raises(ValueError, match="enabled tools"):
-        v3.parse_claude_stream(claude_stream(structured={}, tools=["Bash"]))
+        v3.parse_claude_stream(claude_stream(structured={}, tools=["StructuredOutput", "Bash"]))
     with pytest.raises(ValueError, match="not a JSON object"):
         v3.parse_claude_stream(claude_stream(result_text="[1, 2]"))
 

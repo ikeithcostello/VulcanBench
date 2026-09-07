@@ -381,11 +381,22 @@ rubric text names a model.
   stored in each question's verification field. Unmapped families are
   listed per task with a reason, almost always the mixed corpus family.
 
+## Freeze log
+
+All three freezes happened on September 7, 2026 before any counted call.
+No primary submission was judged under any of them. Superseded run
+directories are retained unchanged next to the live one.
+
+| Freeze | Protocol hash prefix | Outcome |
+| --- | --- | --- |
+| 1 | 73c45e1c | Superseded. Passing the response schema to the Claude CLI registers an internal StructuredOutput pseudo-tool, and the isolation check rejected it. Both Opus 5 and Haiku had answered correctly. Two Astra reviews completed. Directory `runs-code-quality-maintenance-v3-superseded-freeze1`. |
+| 2 | 60001398 | Superseded. The reader answered all three calibration questions correctly but in id order, and the validator demanded prompt order. Rule relaxed to exactly-once in any order. A handful of Astra and Opus 5 reviews completed. Directory `runs-code-quality-maintenance-v3-superseded-freeze2`. |
+| 3 | 4ffda7b1 | Live. Before this freeze, pair, probe, and match were smoke-tested on both transports outside the run directory, six calls, all valid. |
+
+Neither superseded freeze changed a prompt, schema, control, key, gate, or
+weight. Both changed transport parsing or response validation only.
+
 ## Not yet done
 
-- Freeze: `prepare` has not been run, so no protocol JSON exists and no
-  hash is bound. Running it is the freezing act.
-- Calibration and every later stage.
+- Calibration results and every later stage.
 - L3 follow-up change generation, per task, and its worker runner.
-- The Codex transport for probe, match, and pair kinds was not smoke-tested;
-  the first Astra calibration call will exercise it.

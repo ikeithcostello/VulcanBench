@@ -57,6 +57,7 @@ KEYS_DIR = ROOT / "docs/judging/quirk-keys-v3"
 PROTOCOL_ID = "code-quality-maintenance-v3"
 SEED = 20260907
 READER_MODEL = "claude-haiku-4-5-20251001"
+STRUCTURED_OUTPUT_TOOL = "StructuredOutput"
 
 READABILITY = ("naming", "presentation", "intent")
 MAINTAINABILITY = ("structure", "changeability", "verifiability")
@@ -368,10 +369,10 @@ def validate(kind: str, vote: dict, payload: dict) -> None:  # noqa: PLR0912, PL
             raise ValueError("One departure matched to several quirks")
         return
     if kind == "reader":
-        expected = [q["id"] for q in payload["questions"]]
+        expected = sorted(q["id"] for q in payload["questions"])
         answers = vote.get("answers")
-        if not isinstance(answers, list) or [a.get("id") for a in answers] != expected:
-            raise ValueError("Answers must cover every question once, in order")
+        if not isinstance(answers, list) or sorted(str(a.get("id")) for a in answers) != expected:
+            raise ValueError("Answers must cover every question exactly once")
         for a in answers:
             if not isinstance(a.get("answer"), str) or not a["answer"].strip():
                 raise ValueError("Empty answer")
@@ -416,11 +417,14 @@ def parse_claude_stream(stream: str) -> dict:
     events = [json.loads(line) for line in stream.splitlines() if line.strip()]
     init = [e for e in events if e.get("type") == "system" and e.get("subtype") == "init"]
     results = [e for e in events if e.get("type") == "result"]
-    if len(init) != 1 or init[0].get("tools") or len(results) != 1:
+    # Passing --json-schema registers the CLI's StructuredOutput pseudo-tool, which is
+    # the response channel, not a capability. Any other tool is a guard failure.
+    if len(init) != 1 or set(init[0].get("tools") or []) - {STRUCTURED_OUTPUT_TOOL} or len(results) != 1:
         raise ValueError("Unexpected session, enabled tools, or missing result")
     for e in events:
         for block in e.get("message", {}).get("content", []):
-            if block.get("type") in {"tool_use", "server_tool_use"}:
+            if block.get("type") == "server_tool_use" or (
+                    block.get("type") == "tool_use" and block.get("name") != STRUCTURED_OUTPUT_TOOL):
                 raise ValueError("Judge attempted tool use")
     result = results[0]
     if result.get("is_error") or result.get("subtype") != "success":
@@ -554,7 +558,7 @@ RETRYABLE = ("Missing rationale", "Missing dimensions", "Invalid dimension score
              "Missing maintenance consequence", "Invalid pairwise response", "Missing departures",
              "Missing departure field", "Matches must cover every key quirk once, in order", "Invalid match status",
              "Missed quirk cannot cite a departure", "Matched quirk must cite a listed departure",
-             "One departure matched to several quirks", "Answers must cover every question once, in order",
+             "One departure matched to several quirks", "Answers must cover every question exactly once",
              "Empty answer")
 
 
