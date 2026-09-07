@@ -391,12 +391,39 @@ directories are retained unchanged next to the live one.
 | --- | --- | --- |
 | 1 | 73c45e1c | Superseded. Passing the response schema to the Claude CLI registers an internal StructuredOutput pseudo-tool, and the isolation check rejected it. Both Opus 5 and Haiku had answered correctly. Two Astra reviews completed. Directory `runs-code-quality-maintenance-v3-superseded-freeze1`. |
 | 2 | 60001398 | Superseded. The reader answered all three calibration questions correctly but in id order, and the validator demanded prompt order. Rule relaxed to exactly-once in any order. A handful of Astra and Opus 5 reviews completed. Directory `runs-code-quality-maintenance-v3-superseded-freeze2`. |
-| 3 | 4ffda7b1 | Live. Before this freeze, pair, probe, and match were smoke-tested on both transports outside the run directory, six calls, all valid. |
+| 3 | 4ffda7b1 | Completed calibration under protocol id v3. Reader passed (accuracy 1.0 on all four controls). Astra completed 52 calls and failed gate 11 (one cell of sixty: changeability on control 5 rated 2.5, 2.5, 4) and gate 13's naming clause (control 9 naming 3.33 versus 4.00; the verifiability gap itself was 1.33). Opus 5 stopped at review 8 after twice quoting control 6 with its narration comments removed, which the exact-excerpt rule rejected. Directory `runs-code-quality-maintenance-v3`, retained. |
+| 4 | see protocol.json | Live under protocol id v3.1, below. |
 
 Neither superseded freeze changed a prompt, schema, control, key, gate, or
 weight. Both changed transport parsing or response validation only.
 
+## Amendment v3.1, September 7, 2026
+
+Decided by the benchmark owner after reviewing the freeze 3 calibration.
+Protocol id becomes `code-quality-maintenance-v3.1`; run directory
+`runs-code-quality-maintenance-v3.1`. Two rule changes, both to measurement
+mechanics that were the author's error, and one thing deliberately not
+changed:
+
+1. Excerpt rule. "Exact excerpt" becomes "every non-blank excerpt line
+   appears verbatim in the evidence". Fabricated quotes are still rejected.
+   A judge that stitches code lines separated by comments is not.
+2. Gate 13 drops its naming clause. Control 9 genuinely renames module
+   state, so requiring naming to stay within 0.5 of the clear control tested
+   something the control does not hold constant. The verifiability gap of
+   at least 0.5 stays.
+3. Gate 11 (repeatability) is unchanged. Astra failed it under freeze 3 on
+   one cell. Rerunning both panels from scratch under v3.1 gives Astra a
+   second attempt at that gate. That is disclosed here and on the card. If
+   it fails again, it is out under the single-panel rule.
+
+Rubric, controls, keys, schemas, seeds, weights, and every other gate are
+byte-identical to v3. Amending a gate after seeing a panel fail it is what
+this document warns against; the justification is that the clause was
+invalid as a measurement regardless of which panel hit it, and the freeze 3
+result is published alongside.
+
 ## Not yet done
 
-- Calibration results and every later stage.
+- v3.1 calibration results and every later stage.
 - L3 follow-up change generation, per task, and its worker runner.

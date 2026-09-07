@@ -30,6 +30,10 @@ def test_review_validation_requires_six_supported_dimensions():
         v3.validate("review", bad, evidence)
     with pytest.raises(ValueError, match="Unsupported evidence excerpt"):
         v3.validate("review", review_vote(3, excerpt="not in the file"), evidence)
+    # v3.1: lines separated by comments in the file may be stitched, fabricated lines may not
+    v3.validate("review", review_vote(3, excerpt="def balances(records):\n    totals = defaultdict(int)"), evidence)
+    with pytest.raises(ValueError, match="Unsupported evidence excerpt"):
+        v3.validate("review", review_vote(3, excerpt="def balances(records):\n    totals = made_up()"), evidence)
     with pytest.raises(ValueError, match="Invalid dimension score"):
         v3.validate("review", review_vote(3.25), evidence)
 
@@ -102,6 +106,13 @@ def test_gates_pass_for_a_sensitive_panel():
     gates = v3.gates_from_reviews(*synthetic_panel())
     assert all(gates.values()), {k: v for k, v in gates.items() if not v}
     assert len(gates) == 13 + len(v3.CALIBRATION_PAIRS) + 1
+
+
+def test_verifiability_gate_ignores_naming_drift():
+    votes, pairs, probes, matches = synthetic_panel()
+    for r in range(3):
+        votes[9, r]["dimensions"]["naming"]["score"] = 3
+    assert v3.gates_from_reviews(votes, pairs, probes, matches)["g13_verifiability"]
 
 
 def test_gates_catch_a_compression_blind_panel():

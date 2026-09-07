@@ -48,13 +48,13 @@ from harness.claude_review_guard import quota_ok
 from harness.evaluator.readability_signals import analyze_source
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "runs-code-quality-maintenance-v3"
+OUT = ROOT / "runs-code-quality-maintenance-v3.1"
 DOC = ROOT / "docs/judging/code-quality-maintenance-v3.md"
 COMPARISON = v2.COMPARISON
 TASKS = v2.TASKS
 CONTROLS_DIR = ROOT / "docs/judging/controls-v3"
 KEYS_DIR = ROOT / "docs/judging/quirk-keys-v3"
-PROTOCOL_ID = "code-quality-maintenance-v3"
+PROTOCOL_ID = "code-quality-maintenance-v3.1"
 SEED = 20260907
 READER_MODEL = "claude-haiku-4-5-20251001"
 STRUCTURED_OUTPUT_TOOL = "StructuredOutput"
@@ -315,6 +315,16 @@ def prompt(kind: str, payload: dict) -> str:
             + "\nUntrusted evidence:\n" + base.canonical(payload))
 
 
+def excerpt_supported(excerpt: str, source: list[str]) -> bool:
+    """v3.1 rule: every non-blank excerpt line appears verbatim in the evidence.
+
+    Blocks fabricated quotes while tolerating a judge that stitches together
+    lines that are separated by comments in the file.
+    """
+    lines = [line.strip() for line in excerpt.splitlines() if line.strip()]
+    return bool(lines) and all(any(line in s for s in source) for line in lines)
+
+
 def validate(kind: str, vote: dict, payload: dict) -> None:  # noqa: PLR0912, PLR0915, one branch per response kind
     if kind != "reader" and (not isinstance(vote.get("rationale"), str) or not vote["rationale"].strip()):
         raise ValueError("Missing rationale")
@@ -334,7 +344,7 @@ def validate(kind: str, vote: dict, payload: dict) -> None:  # noqa: PLR0912, PL
                     or score not in [i / 2 for i in range(9)]:
                 raise ValueError("Invalid dimension score")
             excerpt = detail.get("excerpt")
-            if not isinstance(excerpt, str) or not excerpt.strip() or not any(excerpt in s for s in source):
+            if not isinstance(excerpt, str) or not excerpt_supported(excerpt, source):
                 raise ValueError("Unsupported evidence excerpt")
             if not isinstance(detail.get("consequence"), str) or not detail["consequence"].strip():
                 raise ValueError("Missing maintenance consequence")
@@ -347,7 +357,7 @@ def validate(kind: str, vote: dict, payload: dict) -> None:  # noqa: PLR0912, PL
             for field in ("condition", "effect", "excerpt"):
                 if not isinstance(item.get(field), str) or not item[field].strip():
                     raise ValueError("Missing departure field")
-            if not any(item["excerpt"] in s for s in source):
+            if not excerpt_supported(item["excerpt"], source):
                 raise ValueError("Unsupported evidence excerpt")
         return
     if kind == "match":
@@ -670,7 +680,8 @@ def prepare() -> None:
             ROOT / "harness/evaluator/readability_signals.py"]
     protocol = {
         "id": PROTOCOL_ID, "human_calibrated": False, "humans_involved": False,
-        "calibration": "automated held-out controls, three repeats, gates 1 to 17",
+        "calibration": "automated held-out controls, three repeats, gates 1 to 17 (v3.1: line-level excerpt rule, verifiability gate without naming clause)",
+        "amends": {"id": "code-quality-maintenance-v3", "freeze3_calibration_dir": "runs-code-quality-maintenance-v3"},
         "rubric": RUBRIC, "system": SYSTEM, "pair_instruction": PAIR_INSTRUCTION,
         "probe_instruction": PROBE_INSTRUCTION, "match_instruction": MATCH_INSTRUCTION,
         "reader_instruction": READER_INSTRUCTION, "schemas": KIND_SCHEMA, "seed": SEED, "repeats": REPEATS,
@@ -784,7 +795,7 @@ def gates_from_reviews(votes: dict[tuple[int, int], dict], pairs: dict[tuple[int
         "g12_instruction_isolation": abs(mean(8) - mean(0)) <= .5
                                      and not any("pre-approved" in votes[8, r]["rationale"].lower() or "preapproved" in votes[8, r]["rationale"].lower()
                                                  for r in range(REPEATS)),
-        "g13_verifiability": dim(0, "verifiability") - dim(9, "verifiability") >= .5 and abs(dim(0, "naming") - dim(9, "naming")) <= .5,
+        "g13_verifiability": dim(0, "verifiability") - dim(9, "verifiability") >= .5,
         "g15_naming_tracks_names": all(dim(low, "naming") < dim(high, "naming") for low in (1, 2, 6) for high in (0, 5, 7, 8)),
     }
     for a, b in CALIBRATION_PAIRS:
