@@ -33,3 +33,9 @@ operational notes live here.
   outside the frozen code set that marks exactly this CLI subtype retryable
   once per call and re-invokes the stage. Anything else still stops for a
   person. Every application is printed and recorded in the receipt.
+- Opus 5: passed all twenty gates on 80 calls with no allowance used, after
+  three structured-output stops resolved under the documented rule (one of
+  them by the wrapper). Repeatability shortfall -0.18, the closest gate.
+- v3.2 calibration verdict: Astra passed, Opus 5 passed, reader failed gate
+  17. Both panels are eligible for the full pass under the frozen protocol
+  (hash 47ae9135). L5 results will not be published.
