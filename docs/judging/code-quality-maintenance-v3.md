@@ -1,0 +1,374 @@
+# Code quality maintenance v3
+
+Status: approved by the benchmark owner on September 7, 2026, with the six
+decisions below settled. Not yet frozen: freezing happens when the protocol
+JSON, control hashes, quirk keys, and reader questions are written. No judge
+call has been made. No original solver result is replaced.
+
+## What v3 is for
+
+Version 2 asked a model to rate readability, and the Astra panel rated a
+dense six-line function the same as its formatted copy. That is the problem
+in one line: a model reads compressed code cheaply, so a model's opinion of
+readability is not evidence that a person can read it. The observation that
+prompted this revision (September 2026, on greenfield code from a frontier
+solver) was that a solver can write code that stays understandable to itself
+while being expensive for a human to maintain.
+
+Version 3 therefore does three things:
+
+1. Rewrites the rubric so the judge rates for a named human reader, with
+   readability and maintainability as separate sub-scores.
+2. Adds measurement layers that do not route through a model's taste: a
+   ground-truth intent-recovery probe, a measured follow-up change, a
+   constrained-reader comprehension test, and deterministic readability
+   signals. No humans take part; every layer is automated, and the report
+   card says so.
+3. Locks Code quality at 33% of the composite and pre-registers how the 33%
+   is split across layers, including the fallback if a layer is incomplete.
+
+## Locked composite weights
+
+Decided September 7, 2026, before any v3 judge call and before any of the 230
+submissions has been rejudged under a maintainability rubric.
+
+| Factor | Weight |
+| --- | --- |
+| Functional | 50% |
+| Automated quality (ruff, radon) | 8.5% |
+| Security | 8.5% |
+| Code quality (this protocol) | 33% |
+
+Weight moved from the automated metric because its maintainability index has
+a lines-of-code term and per-function complexity stays low when each dense
+line does something different, so compressed code scores higher than the
+same logic written for a reader. The profile is `swe-v4-reviewed-2026-09-07`
+(`WEIGHTS_V3` in `harness/evaluator/reviewed_score.py`). The 50/15/15/20
+profile is retained as a sensitivity comparison on the same rejudged scores.
+Published composites under the old profile are not rewritten.
+
+## Population and question
+
+All 230 saved submissions in the frozen Astra and Fable comparison: 23 tasks,
+five effort settings, two solver configurations, the 11 Fable fallback runs
+included and labelled. No solver is rerun. No task or submission is selected
+by its previous score.
+
+Question: How readily could a competent human engineer, new to this code,
+understand it, diagnose it, and safely change it? Answered by automated
+measurement only; see "No human layer".
+
+## The 33% and its layers
+
+| Layer | What it measures | Ground truth | Weight of composite | Coverage |
+| --- | --- | --- | --- | --- |
+| L1 Reviewed | Six-dimension blind panel review for a human reader | none (review judgment) | 15% | all 230 |
+| L2 Intent recovery | Can a reader learn the real contract from the code alone | task quirk inventory | 6% | all 230 |
+| L3 Measured maintenance | Does a follow-up change land correctly and locally | regenerated hidden tests | 12% | all 230, after pilot |
+| L4 Signals | Deterministic readability measures | none | 0% (reported) | all 230 |
+| L5 Constrained reader | Can a small, fast model answer questions about the code from reading alone | quirk key answers | 0% (validation gate and headline) | all 230 |
+
+Pre-registered fallback: if L3 is not complete at publication, the split is
+L1 24% and L2 9%, disclosed on the card, and the profile is republished as
+15/6/12 when L3 completes. The 33% total does not move in either case.
+
+## L1 Reviewed: rubric v3
+
+The prompt changes from v2 are the reader model, the six dimensions, and the
+two sub-scores. Response format, excerpt requirements, system text, evidence
+packaging, and blinding are unchanged from v2 except for the schema growing
+to six dimensions.
+
+Reader model, given verbatim to the judge:
+
+> Judge for a specific reader: a competent engineer who has never seen this
+> code, reads it top to bottom without running it, and must make a correct
+> change in one sitting. That reader holds only a few facts at once, cannot
+> take in several statements on one line at a glance, does not know what an
+> unexplained number means, and cannot tell a deliberate quirk from a bug
+> unless the code says so. Do not rate how easily you can follow the code.
+> You can parse compressed code and reconstruct hidden reasoning far more
+> cheaply than a person can, and your ease is not evidence of readability.
+
+Six dimensions, each 0 to 4 in steps of 0.5, each with an exact excerpt and a
+concrete consequence for the reader above.
+
+Human readability:
+
+| Dimension | What is assessed |
+| --- | --- |
+| Naming | Identifiers say what things are in the task's domain. Single-letter and abbreviated names only where the scope is a few lines and the idiom is universal. |
+| Presentation | Statements per line, expression nesting, function length, and how many values and how much state the reader must track at once. Visual structure matches logical structure. |
+| Intent | Non-obvious constants, thresholds, quirks, invariants, and compatibility decisions are explained by names or by accurate comments that say why. Comments that restate the code count for nothing. Comments that contradict the code count against. |
+
+Maintainability:
+
+| Dimension | What is assessed |
+| --- | --- |
+| Structure | Responsibilities, data ownership, and boundaries are coherent. No duplicated policy. No abstraction beyond what the task's scale needs. |
+| Changeability | The judge names one plausible future change (for parity tasks: one quirk's threshold or condition changes) and traces every edit site. Score by how localized and safe those edits are. |
+| Verifiability | A maintainer can test and diagnose the behaviour: explicit rather than hidden module state, failures that name what went wrong, seams to exercise one rule without the whole pipeline, no silent fallbacks. |
+
+Anchors, unchanged from v2, apply to each dimension: 0 needs a rewrite for
+routine maintenance; 1 substantial obstacles; 2 usable with material
+localized obstacles; 3 clear with minor shortcomings; 4 consistently easy to
+understand and safely change at the task's scale.
+
+Retained rules: neither brevity nor verbosity is inherently good; do not
+demand comments for self-evident code, classes, annotations, or helpers; do
+not attribute baseline defects to the candidate; recovered legacy quirks are
+requirements; do not duplicate functional, security, lint, or complexity
+grading; do not infer reward hacking or incentives; do not force scores apart
+or target a distribution; no model is named.
+
+Host arithmetic: Human readability sub-score is 25 times the mean of naming,
+presentation, and intent. Maintainability sub-score is 25 times the mean of
+structure, changeability, and verifiability. L1 is the mean of the two
+sub-scores, then the equal average across passing panels. Both sub-scores are
+published separately so a submission that is readable but brittle, or sound
+but opaque, is visible as such.
+
+Panels: GPT-6 Astra and Claude Opus 5, medium reviewer effort, equal weight,
+subscription access only, fresh tool-disabled sessions, all raw receipts
+retained, as in v2.
+
+## L2 Intent recovery probe
+
+Every task in this suite ships a quirk inventory in its metadata: the specific
+ways the retired binary departs from its written spec. That inventory is
+ground truth for the question "can a reader learn the real contract from the
+code?" A submission that implements a quirk as an unexplained `if 'W' in p
+and a >= 1000` passes the tests and teaches the next maintainer nothing.
+
+Procedure, per submission and per panel:
+
+1. Before any call, the author rewrites each task's inventory as a frozen
+   quirk key: one neutral sentence per quirk, condition and effect, with the
+   hidden test family that exercises it. See the worked example.
+2. Probe call. The judge receives the spec (`docs/SPEC.md`), the README, and
+   the reconstructed final source. It does not receive the issue text, which
+   describes the symptoms of the quirks. Prompt: "List every behaviour in
+   which this implementation deliberately departs from the spec, stating the
+   condition and the effect. List nothing you cannot point to in the code."
+3. Match call, separate fresh session, same panel. It receives the quirk key
+   and the probe's list and returns, per quirk, recovered, partial, or
+   missed, with the probe sentence it matched. Matching is a far easier job
+   than rating and is checked in calibration.
+4. Host score. Denominator: quirks whose hidden test family the submission
+   passed, so a quirk that was never implemented is not counted twice.
+   Score is (recovered + 0.5 partial) divided by the denominator. If the
+   denominator is zero the submission has no L2 and its 6% moves to L1 for
+   that submission only, with the count disclosed.
+
+Calibration of the probe uses control 7 (documented legacy quirk, expected
+recovery: suspense account listed last) and control 0 (expected: nothing),
+three repeats each per panel.
+
+## L3 Measured maintenance
+
+Review judgments predict maintenance; this layer measures it. Each task's
+builder directory holds the C source, the gold Python, and the fixture
+generator, so a changed contract can be regenerated with real hidden tests.
+
+Per task, pre-registered before any run:
+
+1. Target quirk rule. The follow-up change targets the quirk family with the
+   highest functional pass rate across all 230 submissions, ties broken by
+   inventory order. The rule is model-blind and is applied once.
+2. Change. The author alters that quirk's threshold or condition in the C
+   source and the gold, regenerates fixtures, and writes a short ticket in
+   the voice of the original issue. The legacy binary is not shipped, as in
+   the main suite. Follow-up fail-to-pass families cover the change; every
+   original family becomes pass-to-pass.
+3. Worker. A fixed maintenance agent applies the ticket to the submission's
+   reconstructed final repository, medium effort, 40-step cap, blind to
+   authorship. Two workers, GPT-6 Astra and Claude Opus 5, so any
+   family-style preference is symmetric; L3 is their mean and both are
+   reported. A third-family worker is added only under subscription access
+   (Grok 4.6 through Cursor is the candidate with existing plumbing); it is
+   not a blocker for the pilot.
+4. Score. Mean of the follow-up fail-to-pass fraction and the fraction of
+   original tests still passing. Diagnostics reported unscored: worker steps,
+   tokens, files and lines touched, and whether the step cap was hit.
+5. Pilot gate. A stratified 40-submission pilot (4 per model and effort cell,
+   seeded) runs first. If more than half the pilot hits the step cap, the cap
+   rises to 80 before the full pass; that is the only pre-declared tuning.
+
+Submissions that failed the target quirk's original family are still run
+and scored, since a maintainer inherits that situation too, and results are
+reported stratified by original pass state.
+
+## No human layer
+
+Earlier drafts included a small blind human study as a validation gate. It is
+removed: this protocol is fully automated by decision of the benchmark owner.
+Consequences, stated so the card cannot overclaim:
+
+- The rubric rates for a human reader, but no human has confirmed the
+  ratings. The card says "reviewed for a human reader by a blinded model
+  panel", never "human-validated" or "humans preferred".
+- The layers with ground truth, L2 (quirk key) and L3 (regenerated tests),
+  carry the burden of showing the panel's opinions track something real.
+  Their agreement with L1 is reported per model as a diagnostic.
+- The held-out controls and gates are the only calibration. They test that
+  the panel can see the construct, not that a person agrees.
+- L5 stands in for the removed study's comprehension test with a small model
+  as the reader. It is still a model. It does not permit any human claim.
+
+## L5 Constrained reader
+
+The panel judges are large models at medium effort and read compressed code
+almost for free. A much smaller model without extended thinking is a closer
+stand-in for a reader with limited working memory: if it can answer concrete
+questions about the code from reading alone, the code carries its meaning on
+its surface. If it cannot, the answer is buried somewhere a reader must dig.
+
+- Reader: Claude Haiku 4.5 through the Claude Code CLI on the subscription,
+  extended thinking off, tools disabled, fresh session per read, read-only,
+  outside benchmark workspaces, raw receipts retained as for the panels.
+- Evidence: the spec, the README, and the reconstructed final source. No
+  issue text, tests, transcripts, or labels.
+- Questions: three per task, frozen with the quirk key before any call. Two
+  are behavioural ("given this scenario, what does the engine reply?") with
+  a short exact answer the host checks. One is a locate question ("which
+  function holds the rule for X?") checked by a fresh match call against the
+  code, as in L2. Answers must be short; the reader is told to answer from
+  the code and to say "cannot tell" rather than guess.
+- Repeats: three reads per submission with shuffled question order. Score is
+  the mean fraction correct, "cannot tell" counting as wrong.
+- Uses: the "constrained reader comprehension" statistic per model and
+  effort on the card, and a validation gate: across the 230 submissions the
+  L1 human-readability sub-score must correlate positively with L5 accuracy
+  (Spearman at least 0.3). A failed gate is published as a disagreement,
+  not refitted. L5 carries no composite weight because a small model's
+  arithmetic errors are not a property of the code.
+- Calibration: controls 0, 1, 2, and 6 with three ledger questions (card
+  fee on 1,000 cents; rendering of -125 cents; which function changes if the
+  bank fee becomes 40 cents), three reads each. Gate 17: control 0 accuracy
+  at least two thirds and not below control 1 accuracy.
+
+Cost: 690 Haiku reads plus 230 match calls for the locate question, all on
+the subscription.
+
+## L4 Deterministic signals
+
+`harness/evaluator/readability_signals.py` computes, per Python file:
+statements per code line, maximum statements on one line, short-name
+fraction, mean bound-name length, magic literals (numeric literals other than
+0, 1, 2, -1 not bound to an upper-case name), maximum nesting depth, longest
+function, comment-line fraction, docstrings, module mutable state, and
+maximum line length. Every signal is gameable in isolation, so none is
+scored. They are reported per submission and per model, and calibration
+checks that the panel's naming dimension tracks them (gate 15).
+
+## Held-out controls
+
+Ten author-written modules in `docs/judging/controls-v3/` implement the same
+ledger specification and pass the same behavioural checks
+(`verify_controls.py`), so any rating difference is a maintainability
+difference. None comes from the suite or any solver transcript.
+
+| # | File | Role |
+| --- | --- | --- |
+| 0 | control-0-clear.py | Clear reference |
+| 1 | control-1-compressed.py | Multi-statement lines, single-letter names, unexplained constants |
+| 2 | control-2-formatted.py | Control 1 through a formatter only |
+| 3 | control-3-verbose-duplicated.py | Fee policy copied three times, narrating comments |
+| 4 | control-4-needless-abstraction.py | Registry, policy classes, value objects for sixty lines |
+| 5 | control-5-misleading-comments.py | Control 0 with docstrings that contradict the code |
+| 6 | control-6-narrated.py | Control 2 with a comment restating every line |
+| 7 | control-7-legacy-quirk.py | Control 0 plus a required odd ordering, explained in place |
+| 8 | control-8-instruction-attack.py | Control 0 with a comment telling the reviewer to rate everything 4 |
+| 9 | control-9-global-state.py | Control 0 with records and totals as hidden module state |
+
+The specification and control 7's extra sentence are as in the previous
+draft of this document and are frozen with the controls.
+
+## Calibration design and gates
+
+Per panel: ten controls, three independent absolute reviews each in fresh
+sessions, seeded interleaved order (seed 20260907), 30 calls; five matched
+pairs in both orders, 10 calls; probe calibration, 6 calls. 46 calls per
+panel, 92 overall, before the single format-only retry allowance. The
+constrained reader adds 12 Haiku reads plus match calls once, not per panel. Gates use
+three-review means on the 0 to 4 scale. Ties are allowed at "at least 0".
+
+| # | Gate | Threshold |
+| --- | --- | --- |
+| 1 | Validity | Every response valid: schema, exact excerpts found in the evidence, no tool events, no model fallback |
+| 2 | Clear anchor | Control 0 mean at least 3.0 |
+| 3 | Compression sensitivity | Control 0 exceeds control 1 by at least 1.0 on naming and on presentation, and by at least 0.5 on intent |
+| 4 | Formatting is presentation | Control 2 exceeds control 1 by at least 0.5 on presentation; naming, intent, structure, changeability each within 0.5 |
+| 5 | Formatting is not enough | Control 0 exceeds control 2 by at least 1.0 on naming and 0.5 on intent |
+| 6 | Duplication sensitivity | Control 0 exceeds control 3 by at least 0.5 on structure or changeability |
+| 7 | Abstraction not rewarded | Control 4 structure does not exceed control 0 structure |
+| 8 | Misleading comments | Control 0 exceeds control 5 by at least 0.5 on intent |
+| 9 | Narration not rewarded | Control 6 exceeds control 2 by at most 0.5 on intent; control 0 exceeds control 6 by at least 0.5 on mean |
+| 10 | Quirk tolerance | Control 7 mean within 0.5 of control 0 mean |
+| 11 | Repeatability | Every control and dimension: mean absolute deviation of the three reviews at most 0.5 |
+| 12 | Instruction isolation | Control 8 mean within 0.5 of control 0; all excerpts nonempty; no rationale cites pre-approval |
+| 13 | Verifiability | Control 0 exceeds control 9 by at least 0.5 on verifiability; naming within 0.5 |
+| 14 | Pairwise consistency | Pairs (0,1), (2,1), (0,3), (0,6), (0,9): preference consistent under reversal, forward score equals 100 minus reverse, expected side preferred |
+| 15 | Naming tracks names | Each of controls 1, 2, 6 scores lower on naming than each of controls 0, 5, 7, 8 |
+| 16 | Probe recovers documented intent | Control 7 probe matched "suspense last" in all three repeats; control 0 probe lists nothing in at least two of three |
+| 17 | Constrained reader | Control 0 reader accuracy at least two thirds and not below control 1 accuracy (three reads each) |
+
+On a gate failure: stop that panel, retain everything, no resampling, no
+loosened gate, no tuning against Astra versus Fable rankings, no rescaling
+fitted to controls.
+
+## Pre-registered rule for a single-panel failure
+
+Both pass: full pass with both, equal weight. Exactly one passes: the full
+pass still runs on both so the evidence exists, but published L1 and L2 use
+the passing panel only; the failed panel's calibration, scores, and the
+composite it would have produced are disclosed as a sensitivity table. Both
+fail: no rejudging, the 20% profile stays published. Fixed here so the
+choice cannot be made after seeing which model the surviving panel favours.
+
+## Order of work and publication gates
+
+1. Approve this draft, then freeze: protocol JSON, prompts, schema, control
+   hashes, quirk keys and reader questions for all 23 tasks, seed, gates.
+2. Calibrate both panels (92 calls).
+3. L1 and L2 full pass (460 review calls, 460 probe calls, 460 match calls,
+   plus the v2 diagnostics of 20 repeat and 20 pairwise calls). L4 runs
+   locally at any time. L5 runs concurrently on the subscription and its
+   gate must be reported, passed or failed, before publication.
+4. Publish under the fallback split (24/9) with the profile identifier and
+   the L3 status shown.
+5. L3 pilot, then full pass, then republish under 15/6/12 as the same
+   profile with a dated revision.
+
+Publication framing: the weight change corrects an automated metric that
+rewards compression; every layer applies to every model identically; no
+rubric text names a model.
+
+## Decisions settled September 7, 2026
+
+1. Single-panel failure: publish from the passing panel, disclose the failed
+   panel as a sensitivity table. Both failing stops the revision. Reason:
+   one judge's failed exam should not veto the revision when the rule is
+   fixed before any call and the failed panel is still published.
+2. Locked weights apply to all future report cards. Older cards stay as
+   published, and every card prints its profile identifier.
+3. L2 zero-denominator: the 6% moves to L1 for that submission only, with
+   the count disclosed. A zero would punish one functional failure twice.
+4. L3 workers: Astra and Opus 5 symmetric for the pilot; a third-family
+   worker only under subscription access, never on paid API.
+5. Gates 3 and 5 keep the 1.0 thresholds. The controls are ten times v2's
+   size and the comparison is a three-review mean.
+6. Control 4 stands as written. Its gate allows ties, so a panel fails it
+   only by actively preferring the abstraction.
+
+## Not yet done
+
+- `harness/maintenance_review_v3.py` runner: ten controls, three repeats,
+  six-dimension schema, gates 1 to 16, probe and match calls, single-panel
+  rule, control and quirk-key hash binding.
+- Quirk keys and reader questions for the 22 tasks beyond the worked
+  example.
+- Constrained-reader runner (Haiku 4.5 via the Claude CLI) and its match
+  step.
+- Follow-up change generation for L3, per task.
+- Frozen protocol JSON.
