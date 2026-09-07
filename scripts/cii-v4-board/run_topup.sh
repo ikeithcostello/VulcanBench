@@ -76,7 +76,10 @@ done
 
 # ---------- phase 2: swing set to n=REPEAT at low / medium / high ------------
 # Recomputed rather than hardcoded: the set is defined by the data.
-mapfile -t SWING < <(python3 - "$OUTROOT" <<'PY'
+# Bash 3.2 (macOS) has neither mapfile nor a heredoc inside process
+# substitution, so collect the set with plain command substitution. Task ids
+# contain no whitespace, so word splitting over them is safe.
+SWING=$(python3 - "$OUTROOT" <<'PY'
 import json, glob, sys
 from collections import defaultdict
 root = sys.argv[1]
@@ -93,10 +96,10 @@ for t in sorted(lv['low']):
         print(t)
 PY
 )
-echo "=== phase 2 swing set: ${#SWING[@]} tasks"
+echo "=== phase 2 swing set: $(echo "$SWING" | wc -w | tr -d ' ') tasks"
 
 for level in low medium high; do
-  for task in "${SWING[@]}"; do
+  for task in $SWING; do
     for attempt in $(seq 1 40); do
       have=$(count_runs "$task" "$level")
       need=$((REPEAT - have))
