@@ -38,7 +38,7 @@ def apply_rule(folder: Path) -> bool:
     stream = folder / "attempt-1.stream.jsonl"
     if not stream.exists():
         return False
-    results = [json.loads(l) for l in stream.read_text().splitlines() if l.strip() and '"type":"result"' in l]
+    results = [json.loads(line) for line in stream.read_text().splitlines() if line.strip() and "\"type\":\"result\"" in line]
     if not results or results[0].get("subtype") != SUBTYPE:
         return False
     receipt["retryable"] = True
@@ -58,7 +58,7 @@ def main() -> int:
     panel = args[args.index("--panel") + 1]
     applied = 0
     while True:
-        proc = subprocess.run([sys.executable, "-u", "-m", "harness.maintenance_review_v3", *args])
+        proc = subprocess.run([sys.executable, "-u", "-m", "harness.maintenance_review_v3", *args], check=False)
         if proc.returncode == 0:
             print(json.dumps({"event": "stage_complete", "operator_rule_applications": applied}), flush=True)
             return 0
