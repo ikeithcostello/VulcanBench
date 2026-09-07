@@ -20,3 +20,11 @@ operational notes live here.
   control. The gate compares two accuracies at the ceiling, so a single slip
   decides it; that is a design weakness recorded here, not amended. L5
   carries no weight and its results are not published under v3.2.
+- Opus 5, control 5, repeat 4: second occurrence of
+  `error_max_structured_output_retries` (dimensions field omitted again).
+  Same rule applied: receipt retained with the review note, one fresh
+  attempt, panel resumed. Two occurrences in the first 29 Opus 5 reviews. If
+  this rate holds, the full pass of 460 reviews would need roughly 30 such
+  reviews; the fix belongs in the transport's retry classification and can
+  only land with a new protocol identifier, so it is deferred to the
+  boundary before the full pass and recorded here.
