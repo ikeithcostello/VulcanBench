@@ -558,7 +558,7 @@ RETRYABLE = ("Missing rationale", "Missing dimensions", "Invalid dimension score
              "Empty answer")
 
 
-def call(panel: str, stage: str, name: str, kind: str, payload: dict, protocol: dict) -> dict:
+def call(panel: str, stage: str, name: str, kind: str, payload: dict, protocol: dict) -> dict:  # noqa: PLR0912, PLR0915, receipt-bound retry ladder
     folder = OUT / "calls" / panel / stage / name
     folder.mkdir(parents=True, exist_ok=True)
     text = prompt(kind, payload)
@@ -626,7 +626,7 @@ def interleaved_order(seed: int, count: int, repeats: int) -> list[list[int]]:
             return items
 
 
-def prepare() -> None:  # noqa: PLR0912, PLR0915, linear freeze orchestration
+def prepare() -> None:
     rows = read(COMPARISON)["rows"]
     counts = Counter((r["model"], r["effort"]) for r in rows)
     expected = {(m, e) for m in ("astra", "fable") for e in base.LEVELS}
@@ -715,7 +715,7 @@ def _signals(code: str) -> dict:
         return {"error": f"syntax error: {error.msg} line {error.lineno}"}
 
 
-def verify_frozen() -> dict:
+def verify_frozen() -> dict:  # noqa: PLR0912, one check per frozen artifact
     protocol = read(OUT / "protocol.json")
     if protocol["id"] != PROTOCOL_ID:
         raise ValueError("Wrong protocol")
@@ -924,7 +924,7 @@ def l2_score(match: dict, key: dict, passed: set[str]) -> float | None:
     return 100 * statistics.mean(credit[status[q["id"]]] for q in counted)
 
 
-def summarize() -> dict:  # noqa: PLR0912, linear host arithmetic
+def summarize() -> dict:
     protocol = verify_frozen()
     manifest = read(OUT / "private-manifest.json")
     passing = [p for p in PANELS if panel_passed(p)]
