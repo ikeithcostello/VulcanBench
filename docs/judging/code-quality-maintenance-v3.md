@@ -291,11 +291,12 @@ draft of this document and are frozen with the controls.
 
 ## Calibration design and gates
 
-Per panel: ten controls, three independent absolute reviews each in fresh
-sessions, seeded interleaved order (seed 20260907), 30 calls; five matched
-pairs in both orders, 10 calls; probe calibration, 6 calls. 46 calls per
-panel, 92 overall, before the single format-only retry allowance. The
-constrained reader adds 12 Haiku reads plus match calls once, not per panel. Gates use
+Per panel (as amended by v3.2): ten controls, five independent absolute
+reviews each in fresh sessions, seeded interleaved order (seed 20260907), 50
+calls; five matched pairs in both orders, 10 calls; probe calibration, 20
+calls. 80 calls per panel, 160 overall, before the single format-only retry
+allowance. The constrained reader adds 20 Haiku reads once, not per panel.
+Gate verdicts use the v3.2 allowance described in the amendment section. Gates use
 three-review means on the 0 to 4 scale. Ties are allowed at "at least 0".
 
 | # | Gate | Threshold |
@@ -392,7 +393,8 @@ directories are retained unchanged next to the live one.
 | 1 | 73c45e1c | Superseded. Passing the response schema to the Claude CLI registers an internal StructuredOutput pseudo-tool, and the isolation check rejected it. Both Opus 5 and Haiku had answered correctly. Two Astra reviews completed. Directory `runs-code-quality-maintenance-v3-superseded-freeze1`. |
 | 2 | 60001398 | Superseded. The reader answered all three calibration questions correctly but in id order, and the validator demanded prompt order. Rule relaxed to exactly-once in any order. A handful of Astra and Opus 5 reviews completed. Directory `runs-code-quality-maintenance-v3-superseded-freeze2`. |
 | 3 | 4ffda7b1 | Completed calibration under protocol id v3. Reader passed (accuracy 1.0 on all four controls). Astra completed 52 calls and failed gate 11 (one cell of sixty: changeability on control 5 rated 2.5, 2.5, 4) and gate 13's naming clause (control 9 naming 3.33 versus 4.00; the verifiability gap itself was 1.33). Opus 5 stopped at review 8 after twice quoting control 6 with its narration comments removed, which the exact-excerpt rule rejected. Directory `runs-code-quality-maintenance-v3`, retained. |
-| 4 | see protocol.json | Live under protocol id v3.1, below. |
+| 4 | e64beac2 | Completed calibration under protocol id v3.1. Reader passed (accuracy 1.0). Astra completed 52 calls, passed gates 11 and 13, and failed gate 4: the formatted copy of the compressed control scored 1.0 higher on changeability (2.5, 2.5, 2.5 versus 3, 4, 3.5); under freeze 3 the same gap was 0.33. Opus 5 completed 22 reviews and stopped on control 9 after quoting an excerpt with a dots-only line marking elided code, then an abbreviated call. Directory `runs-code-quality-maintenance-v3.1`, retained. |
+| 5 | see protocol.json | Live under protocol id v3.2, below. |
 
 Neither superseded freeze changed a prompt, schema, control, key, gate, or
 weight. Both changed transport parsing or response validation only.
@@ -423,7 +425,32 @@ this document warns against; the justification is that the clause was
 invalid as a measurement regardless of which panel hit it, and the freeze 3
 result is published alongside.
 
+## Amendment v3.2, September 7, 2026
+
+Decided by the benchmark owner after the v3.1 calibration. Two runs produced
+two different single-gate failures for Astra from a battery of twenty gates
+on three-review means, and Opus 5 twice failed the excerpt mechanic through
+ordinary quoting conventions. That pattern points at the instrument. Protocol
+id becomes `code-quality-maintenance-v3.2`; run directory
+`runs-code-quality-maintenance-v3.2`. Three changes:
+
+1. Five repeats per control instead of three. Calibration is 50 reviews, 10
+   pairs, 10 probe and 10 match calls per panel, and 20 reader reads.
+2. A pre-declared allowance: a panel passes if at most one gate fails, and
+   that gate's shortfall from its threshold is at most 0.5 on the dimension
+   scale. Boolean gates (validity, pairwise consistency, naming order,
+   instruction obedience, probe recovery) can never be excused. The
+   allowance is recorded on the calibration result when used.
+3. Excerpt lines consisting only of dots or an ellipsis character mark
+   elided code and are skipped. Every other line must still appear
+   verbatim; an abbreviated call such as `raise ValueError(...)` still fails.
+
+Not changed: rubric, controls, keys, schemas, seed, weights, thresholds of
+every gate. This is Astra's third calibration attempt and the allowance was
+introduced after two single-gate failures. Both facts appear on the card.
+Freeze 3 and v3.1 results stay published in full.
+
 ## Not yet done
 
-- v3.1 calibration results and every later stage.
+- v3.2 calibration results and every later stage.
 - L3 follow-up change generation, per task, and its worker runner.

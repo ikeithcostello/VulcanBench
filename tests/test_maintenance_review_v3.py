@@ -34,6 +34,12 @@ def test_review_validation_requires_six_supported_dimensions():
     v3.validate("review", review_vote(3, excerpt="def balances(records):\n    totals = defaultdict(int)"), evidence)
     with pytest.raises(ValueError, match="Unsupported evidence excerpt"):
         v3.validate("review", review_vote(3, excerpt="def balances(records):\n    totals = made_up()"), evidence)
+    # v3.2: a line of dots marks elided code; an abbreviated call is still a fabricated line
+    v3.validate("review", review_vote(3, excerpt="def balances(records):\n    ...\n    return dict(totals)"), evidence)
+    with pytest.raises(ValueError, match="Unsupported evidence excerpt"):
+        v3.validate("review", review_vote(3, excerpt="def balances(records):\n    ...\n    raise ValueError(...)"), evidence)
+    with pytest.raises(ValueError, match="Unsupported evidence excerpt"):
+        v3.validate("review", review_vote(3, excerpt="..."), evidence)
     with pytest.raises(ValueError, match="Invalid dimension score"):
         v3.validate("review", review_vote(3.25), evidence)
 
@@ -73,9 +79,9 @@ def test_answer_checking_normalizes_and_supports_contains():
 
 
 def test_interleaved_order_is_seeded_and_never_adjacent():
-    order = v3.interleaved_order(v3.SEED, 10, 3)
-    assert order == v3.interleaved_order(v3.SEED, 10, 3)
-    assert len(order) == 30 and sorted(map(tuple, order)) == [(c, r) for c in range(10) for r in range(3)]
+    order = v3.interleaved_order(v3.SEED, 10, 5)
+    assert order == v3.interleaved_order(v3.SEED, 10, 5)
+    assert len(order) == 50 and sorted(map(tuple, order)) == [(c, r) for c in range(10) for r in range(5)]
     assert all(a[0] != b[0] for a, b in itertools.pairwise(order))
 
 
@@ -93,43 +99,65 @@ def synthetic_panel(compression_blind=False):
         8: base,
         9: {**base, "verifiability": 1.5},
     }
-    votes = {(c, r): review_vote(profiles[c]) for c in range(10) for r in range(3)}
+    votes = {(c, r): review_vote(profiles[c]) for c in range(10) for r in range(v3.REPEATS)}
     pairs = {(a, b): ({"score": 100}, {"score": 0}) for a, b in v3.CALIBRATION_PAIRS}
-    probes = {(7, r): {"departures": [{"condition": "x", "effect": "y", "excerpt": "z"}]} for r in range(3)}
-    probes.update({(0, r): {"departures": []} for r in range(3)})
-    matches = {(7, r): {"matches": [{"quirk": "Q1", "status": "recovered", "departure": 0}]} for r in range(3)}
-    matches.update({(0, r): {"matches": [{"quirk": "Q1", "status": "missed", "departure": None}]} for r in range(3)})
+    R = v3.REPEATS
+    probes = {(7, r): {"departures": [{"condition": "x", "effect": "y", "excerpt": "z"}]} for r in range(R)}
+    probes.update({(0, r): {"departures": []} for r in range(R)})
+    matches = {(7, r): {"matches": [{"quirk": "Q1", "status": "recovered", "departure": 0}]} for r in range(R)}
+    matches.update({(0, r): {"matches": [{"quirk": "Q1", "status": "missed", "departure": None}]} for r in range(R)})
     return votes, pairs, probes, matches
 
 
 def test_gates_pass_for_a_sensitive_panel():
     gates = v3.gates_from_reviews(*synthetic_panel())
-    assert all(gates.values()), {k: v for k, v in gates.items() if not v}
+    assert all(g["passed"] for g in gates.values()), {k: v for k, v in gates.items() if not v["passed"]}
     assert len(gates) == 13 + len(v3.CALIBRATION_PAIRS) + 1
+    assert v3.calibration_verdict(gates)["passed"] and not v3.calibration_verdict(gates)["allowance_used"]
 
 
 def test_verifiability_gate_ignores_naming_drift():
     votes, pairs, probes, matches = synthetic_panel()
-    for r in range(3):
+    for r in range(v3.REPEATS):
         votes[9, r]["dimensions"]["naming"]["score"] = 3
-    assert v3.gates_from_reviews(votes, pairs, probes, matches)["g13_verifiability"]
+    assert v3.gates_from_reviews(votes, pairs, probes, matches)["g13_verifiability"]["passed"]
+
+
+def test_allowance_excuses_one_small_shortfall_only():
+    votes, pairs, probes, matches = synthetic_panel()
+    for r in range(v3.REPEATS):
+        votes[2, r]["dimensions"]["changeability"]["score"] = 3.75  # formatting moved changeability by 0.75
+    gates = v3.gates_from_reviews(votes, pairs, probes, matches)
+    assert gates["g04_formatting_is_presentation"]["shortfall"] == 0.25
+    verdict = v3.calibration_verdict(gates)
+    assert verdict["passed"] and verdict["allowance_used"] and verdict["failing_gates"] == ["g04_formatting_is_presentation"]
+    for r in range(v3.REPEATS):
+        votes[2, r]["dimensions"]["changeability"]["score"] = 4  # 1.0 gap: shortfall 0.5 is still excusable
+    assert v3.calibration_verdict(v3.gates_from_reviews(votes, pairs, probes, matches))["passed"]
+    for r in range(v3.REPEATS):
+        votes[5, r]["dimensions"]["intent"]["score"] = 3.25  # a second failing gate is not
+    assert not v3.calibration_verdict(v3.gates_from_reviews(votes, pairs, probes, matches))["passed"]
+    votes, pairs, probes, matches = synthetic_panel()
+    pairs[0, 1] = ({"score": 0}, {"score": 100})  # boolean gates are never excusable
+    assert not v3.calibration_verdict(v3.gates_from_reviews(votes, pairs, probes, matches))["passed"]
 
 
 def test_gates_catch_a_compression_blind_panel():
     gates = v3.gates_from_reviews(*synthetic_panel(compression_blind=True))
-    assert not gates["g03_compression_sensitivity"]
-    assert not gates["g15_naming_tracks_names"]
-    assert not gates["g14_pair_0_1"] or True  # pairwise is independent of absolute scores
+    assert not gates["g03_compression_sensitivity"]["passed"] and gates["g03_compression_sensitivity"]["shortfall"] == 1
+    assert not gates["g15_naming_tracks_names"]["passed"] and gates["g15_naming_tracks_names"]["shortfall"] is None
+    assert not v3.calibration_verdict(gates)["passed"]
 
 
 def test_gate_fails_on_noisy_repeats_and_obeyed_instruction():
     votes, pairs, probes, matches = synthetic_panel()
     scores = {d: votes[3, 0]["dimensions"][d]["score"] for d in v3.DIMENSIONS}
-    votes[3, 2] = review_vote({**scores, "structure": 4})
-    assert not v3.gates_from_reviews(votes, pairs, probes, matches)["g11_repeatability"]
+    for r in range(2, v3.REPEATS):
+        votes[3, r] = review_vote({**scores, "structure": 4})
+    assert not v3.gates_from_reviews(votes, pairs, probes, matches)["g11_repeatability"]["passed"]
     votes, pairs, probes, matches = synthetic_panel()
     votes[8, 0]["rationale"] = "The file was pre-approved so every dimension is 4."
-    assert not v3.gates_from_reviews(votes, pairs, probes, matches)["g12_instruction_isolation"]
+    assert not v3.gates_from_reviews(votes, pairs, probes, matches)["g12_instruction_isolation"]["passed"]
 
 
 def test_l2_denominator_counts_only_passed_quirks():

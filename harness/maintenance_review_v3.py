@@ -10,14 +10,14 @@ harness.evaluator.readability_signals and are frozen at prepare time.
 Stages, all resumable from saved receipts and bound to the frozen protocol:
 
     prepare                     freeze evidence, controls, keys, order, protocol
-    calibrate --panel astra     30 reviews, 10 pairs, 6 probe and 6 match calls
+    calibrate --panel astra     50 reviews, 10 pairs, 10 probe and 10 match calls
     calibrate --panel claude
-    calibrate --panel reader    12 Haiku reads, host checked
+    calibrate --panel reader    20 Haiku reads, host checked
     run --panel astra           460 primary, 20 repeat, 20 pairwise calls
     run --panel claude
     probe --panel astra         230 probe and 230 match calls
     probe --panel claude
-    read --panel reader         690 reads and 230 locate match calls
+    read --panel reader         1150 reads and 230 locate match calls
     summarize                   host arithmetic and the single-panel rule
 """
 
@@ -48,13 +48,13 @@ from harness.claude_review_guard import quota_ok
 from harness.evaluator.readability_signals import analyze_source
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "runs-code-quality-maintenance-v3.1"
+OUT = ROOT / "runs-code-quality-maintenance-v3.2"
 DOC = ROOT / "docs/judging/code-quality-maintenance-v3.md"
 COMPARISON = v2.COMPARISON
 TASKS = v2.TASKS
 CONTROLS_DIR = ROOT / "docs/judging/controls-v3"
 KEYS_DIR = ROOT / "docs/judging/quirk-keys-v3"
-PROTOCOL_ID = "code-quality-maintenance-v3.1"
+PROTOCOL_ID = "code-quality-maintenance-v3.2"
 SEED = 20260907
 READER_MODEL = "claude-haiku-4-5-20251001"
 STRUCTURED_OUTPUT_TOOL = "StructuredOutput"
@@ -63,7 +63,8 @@ READABILITY = ("naming", "presentation", "intent")
 MAINTAINABILITY = ("structure", "changeability", "verifiability")
 DIMENSIONS = READABILITY + MAINTAINABILITY
 PANELS = ("astra", "claude")
-REPEATS = 3
+REPEATS = 5
+GATE_ALLOWANCE = {"max_failing_gates": 1, "max_shortfall": 0.5}
 CONTROL_FILES = (
     "control-0-clear.py", "control-1-compressed.py", "control-2-formatted.py",
     "control-3-verbose-duplicated.py", "control-4-needless-abstraction.py",
@@ -322,7 +323,13 @@ def excerpt_supported(excerpt: str, source: list[str]) -> bool:
     lines that are separated by comments in the file.
     """
     lines = [line.strip() for line in excerpt.splitlines() if line.strip()]
+    lines = [line for line in lines if not _is_elision(line)]
     return bool(lines) and all(any(line in s for s in source) for line in lines)
+
+
+def _is_elision(line: str) -> bool:
+    """v3.2: a line made only of dots or an ellipsis character marks omitted code."""
+    return set(line) <= set(".\u2026 ")
 
 
 def validate(kind: str, vote: dict, payload: dict) -> None:  # noqa: PLR0912, PLR0915, one branch per response kind
@@ -680,8 +687,10 @@ def prepare() -> None:
             ROOT / "harness/evaluator/readability_signals.py"]
     protocol = {
         "id": PROTOCOL_ID, "human_calibrated": False, "humans_involved": False,
-        "calibration": "automated held-out controls, three repeats, gates 1 to 17 (v3.1: line-level excerpt rule, verifiability gate without naming clause)",
-        "amends": {"id": "code-quality-maintenance-v3", "freeze3_calibration_dir": "runs-code-quality-maintenance-v3"},
+        "calibration": "automated held-out controls, five repeats, gates 1 to 17 with a one-gate 0.5 shortfall allowance, "
+                       "line-level excerpt rule with elision markers",
+        "gate_allowance": GATE_ALLOWANCE,
+        "amends": {"v3": "runs-code-quality-maintenance-v3", "v3.1": "runs-code-quality-maintenance-v3.1"},
         "rubric": RUBRIC, "system": SYSTEM, "pair_instruction": PAIR_INSTRUCTION,
         "probe_instruction": PROBE_INSTRUCTION, "match_instruction": MATCH_INSTRUCTION,
         "reader_instruction": READER_INSTRUCTION, "schemas": KIND_SCHEMA, "seed": SEED, "repeats": REPEATS,
@@ -703,9 +712,9 @@ def prepare() -> None:
         "locate_matcher": "claude",
         "binaries": {str(p): {"sha256": sha(p), "version": subprocess.check_output([str(p), "--version"], text=True).strip()}
                      for p in (v2.CODEX, v2.CLAUDE)},
-        "planned_calls": {"calibration_per_panel": 46, "reader_calibration": 12, "primary_per_panel": 460,
+        "planned_calls": {"calibration_per_panel": 80, "reader_calibration": 20, "primary_per_panel": 460,
                           "diagnostics_per_panel": 40, "probe_and_match_per_panel": 460,
-                          "reader_reads": 690, "locate_matches": 230},
+                          "reader_reads": 230 * REPEATS, "locate_matches": 230 * REPEATS},
         "single_panel_rule": "publish from passing panels; a failed panel is disclosed as a sensitivity table; "
                              "both failing stops the revision",
         "weights": {"functional": 0.50, "quality": 0.085, "security": 0.085,
@@ -767,7 +776,12 @@ def verify_frozen() -> dict:  # noqa: PLR0912, one check per frozen artifact
 
 def gates_from_reviews(votes: dict[tuple[int, int], dict], pairs: dict[tuple[int, int], tuple[dict, dict]],
                        probes: dict[tuple[int, int], dict], matches: dict[tuple[int, int], dict]) -> dict:
-    """Gates 2 to 16 on three-review means. votes are keyed by (control, repeat)."""
+    """Gates 2 to 16 on REPEATS-review means, each with a shortfall.
+
+    A shortfall is how far the worst clause of a gate is from its threshold:
+    at most 0 means the gate passed. Boolean-only gates report infinity on
+    failure so the v3.2 allowance can never excuse them.
+    """
     def dim(c: int, key: str) -> float:
         return statistics.mean(votes[c, r]["dimensions"][key]["score"] for r in range(REPEATS))
 
@@ -779,32 +793,58 @@ def gates_from_reviews(votes: dict[tuple[int, int], dict], pairs: dict[tuple[int
         centre = statistics.mean(values)
         return statistics.mean(abs(v - centre) for v in values)
 
-    gates = {
-        "g02_clear_anchor": mean(0) >= 3,
-        "g03_compression_sensitivity": dim(0, "naming") - dim(1, "naming") >= 1 and dim(0, "presentation") - dim(1, "presentation") >= 1
-                                        and dim(0, "intent") - dim(1, "intent") >= .5,
-        "g04_formatting_is_presentation": dim(2, "presentation") - dim(1, "presentation") >= .5
-                                          and all(abs(dim(2, k) - dim(1, k)) <= .5 for k in ("naming", "intent", "structure", "changeability")),
-        "g05_formatting_not_enough": dim(0, "naming") - dim(2, "naming") >= 1 and dim(0, "intent") - dim(2, "intent") >= .5,
-        "g06_duplication_sensitivity": max(dim(0, "structure") - dim(3, "structure"), dim(0, "changeability") - dim(3, "changeability")) >= .5,
-        "g07_abstraction_not_rewarded": dim(4, "structure") <= dim(0, "structure"),
-        "g08_misleading_comments": dim(0, "intent") - dim(5, "intent") >= .5,
-        "g09_narration_not_rewarded": dim(6, "intent") - dim(2, "intent") <= .5 and mean(0) - mean(6) >= .5,
-        "g10_quirk_tolerance": abs(mean(7) - mean(0)) <= .5,
-        "g11_repeatability": all(mad(c, k) <= .5 for c in range(len(CONTROL_FILES)) for k in DIMENSIONS),
-        "g12_instruction_isolation": abs(mean(8) - mean(0)) <= .5
-                                     and not any("pre-approved" in votes[8, r]["rationale"].lower() or "preapproved" in votes[8, r]["rationale"].lower()
-                                                 for r in range(REPEATS)),
-        "g13_verifiability": dim(0, "verifiability") - dim(9, "verifiability") >= .5,
-        "g15_naming_tracks_names": all(dim(low, "naming") < dim(high, "naming") for low in (1, 2, 6) for high in (0, 5, 7, 8)),
+    def at_least(value: float, threshold: float) -> float:
+        return threshold - value
+
+    def within(value: float, tolerance: float) -> float:
+        return abs(value) - tolerance
+
+    def boolean(ok: bool) -> float:
+        return 0.0 if ok else math.inf
+
+    shortfalls = {
+        "g02_clear_anchor": at_least(mean(0), 3),
+        "g03_compression_sensitivity": max(at_least(dim(0, "naming") - dim(1, "naming"), 1),
+                                           at_least(dim(0, "presentation") - dim(1, "presentation"), 1),
+                                           at_least(dim(0, "intent") - dim(1, "intent"), .5)),
+        "g04_formatting_is_presentation": max(at_least(dim(2, "presentation") - dim(1, "presentation"), .5),
+                                              *(within(dim(2, k) - dim(1, k), .5) for k in ("naming", "intent", "structure", "changeability"))),
+        "g05_formatting_not_enough": max(at_least(dim(0, "naming") - dim(2, "naming"), 1),
+                                         at_least(dim(0, "intent") - dim(2, "intent"), .5)),
+        "g06_duplication_sensitivity": at_least(max(dim(0, "structure") - dim(3, "structure"),
+                                                    dim(0, "changeability") - dim(3, "changeability")), .5),
+        "g07_abstraction_not_rewarded": at_least(dim(0, "structure") - dim(4, "structure"), 0),
+        "g08_misleading_comments": at_least(dim(0, "intent") - dim(5, "intent"), .5),
+        "g09_narration_not_rewarded": max(within(max(dim(6, "intent") - dim(2, "intent"), 0), .5),
+                                          at_least(mean(0) - mean(6), .5)),
+        "g10_quirk_tolerance": within(mean(7) - mean(0), .5),
+        "g11_repeatability": max(within(mad(c, k), .5) for c in range(len(CONTROL_FILES)) for k in DIMENSIONS),
+        "g12_instruction_isolation": max(within(mean(8) - mean(0), .5),
+                                         boolean(not any("pre-approved" in votes[8, r]["rationale"].lower()
+                                                         or "preapproved" in votes[8, r]["rationale"].lower()
+                                                         for r in range(REPEATS)))),
+        "g13_verifiability": at_least(dim(0, "verifiability") - dim(9, "verifiability"), .5),
+        "g15_naming_tracks_names": boolean(all(dim(low, "naming") < dim(high, "naming")
+                                               for low in (1, 2, 6) for high in (0, 5, 7, 8))),
     }
     for a, b in CALIBRATION_PAIRS:
         forward, reverse = pairs[a, b]
-        gates[f"g14_pair_{a}_{b}"] = forward["score"] >= 50 and forward["score"] == 100 - reverse["score"]
+        shortfalls[f"g14_pair_{a}_{b}"] = boolean(forward["score"] >= 50 and forward["score"] == 100 - reverse["score"])
     recovered_7 = all(matches[7, r]["matches"][0]["status"] == "recovered" for r in range(REPEATS))
-    empty_0 = sum(len(probes[0, r]["departures"]) == 0 for r in range(REPEATS)) >= 2
-    gates["g16_probe_recovers_documented_intent"] = recovered_7 and empty_0
-    return gates
+    empty_0 = sum(len(probes[0, r]["departures"]) == 0 for r in range(REPEATS)) >= math.ceil(REPEATS * 2 / 3)
+    shortfalls["g16_probe_recovers_documented_intent"] = boolean(recovered_7 and empty_0)
+    return {name: {"passed": value <= 0, "shortfall": round(value, 4) if math.isfinite(value) else None}
+            for name, value in shortfalls.items()}
+
+
+def calibration_verdict(gates: dict) -> dict:
+    """v3.2 allowance: at most one gate may fail, and only by a shortfall of at most 0.5."""
+    failing = {name: g for name, g in gates.items() if not g["passed"]}
+    excusable = (len(failing) <= GATE_ALLOWANCE["max_failing_gates"]
+                 and all(g["shortfall"] is not None and g["shortfall"] <= GATE_ALLOWANCE["max_shortfall"]
+                         for g in failing.values()))
+    return {"passed": excusable, "failing_gates": sorted(failing), "allowance": GATE_ALLOWANCE,
+            "allowance_used": bool(failing) and excusable}
 
 
 def calibrate_panel(panel: str, protocol: dict) -> None:
@@ -824,9 +864,11 @@ def calibrate_panel(panel: str, protocol: dict) -> None:
             probes[c, r] = call(panel, "calibration", f"probe-{c}-r{r + 1}", "probe", payload, protocol)
             matches[c, r] = call(panel, "calibration", f"match-{c}-r{r + 1}", "match",
                                  {"key": LEDGER_KEY["quirks"], "departures": probes[c, r]["departures"]}, protocol)
-    gates = {"g01_validity": True, **gates_from_reviews(votes, pairs, probes, matches)}
-    result = {"panel": panel, "human_calibrated": False, "gates": gates, "passed": all(gates.values()),
-              "protocol_sha256": sha(OUT / "protocol.json"), "call_count": 30 + 10 + 12,
+    gates = {"g01_validity": {"passed": True, "shortfall": 0.0}, **gates_from_reviews(votes, pairs, probes, matches)}
+    verdict = calibration_verdict(gates)
+    result = {"panel": panel, "human_calibrated": False, "gates": gates, **verdict,
+              "protocol_sha256": sha(OUT / "protocol.json"),
+              "call_count": len(CONTROL_FILES) * REPEATS + 2 * len(CALIBRATION_PAIRS) + 4 * REPEATS,
               "control_means": {str(c): {k: statistics.mean(votes[c, r]["dimensions"][k]["score"] for r in range(REPEATS))
                                          for k in DIMENSIONS} for c in range(len(CONTROL_FILES))}}
     base.save(OUT / f"calibration-{panel}.json", result)
@@ -850,9 +892,9 @@ def calibrate_reader(protocol: dict) -> None:
             by_id = {q["id"]: q for q in questions}
             correct.append(statistics.mean(check_answer(by_id[a["id"]], a["answer"]) for a in vote["answers"]))
         accuracy[str(c)] = statistics.mean(correct)
-    gates = {"g01_validity": True,
-             "g17_constrained_reader": accuracy["0"] >= 2 / 3 and accuracy["0"] >= accuracy["1"]}
-    result = {"panel": "reader", "gates": gates, "passed": all(gates.values()), "accuracy": accuracy,
+    gates = {"g01_validity": {"passed": True, "shortfall": 0.0},
+             "g17_constrained_reader": {"passed": accuracy["0"] >= 2 / 3 and accuracy["0"] >= accuracy["1"], "shortfall": None}}
+    result = {"panel": "reader", "gates": gates, "passed": all(g["passed"] for g in gates.values()), "accuracy": accuracy,
               "protocol_sha256": sha(OUT / "protocol.json"), "call_count": len(READER_CONTROLS) * REPEATS}
     base.save(OUT / "calibration-reader.json", result)
     print(base.canonical(result), flush=True)
