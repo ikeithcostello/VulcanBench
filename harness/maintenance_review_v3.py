@@ -349,7 +349,9 @@ def excerpt_supported(excerpt: str, source: list[str]) -> bool:
     that are each checked verbatim. Fabricated text still fails.
     """
     fragments = [f.strip() for line in excerpt.splitlines() for f in _ELLIPSIS.split(line) if f.strip()]
-    fragments = [f for f in fragments if not _is_elision(f)]
+    # Punctuation-only fragments (a lone bracket left by an elided argument list) carry no evidence;
+    # they are neither checked nor counted. At least one substantive fragment must exist.
+    fragments = [f for f in fragments if not _is_elision(f) and any(ch.isalnum() for ch in f)]
     return bool(fragments) and all(any(f in s for s in source) for f in fragments)
 
 

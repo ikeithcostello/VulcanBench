@@ -48,7 +48,7 @@ def stage_kind(stage: str) -> str:
     return {"primary": "review", "repeat": "review", "pairwise": "pair", "probe": "probe", "match": "match"}[stage]
 
 
-def payload_for(stage: str, ident: str) -> dict | None:
+def payload_for(stage: str, ident: str) -> dict | None:  # noqa: PLR0911, one branch per stage
     """Rebuild the frozen payload for a call so a recovered response can be validated."""
     if stage in ("primary", "repeat"):
         return v3.read(OUT / "evidence" / f"{ident}.json")

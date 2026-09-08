@@ -36,8 +36,12 @@ def test_review_validation_requires_six_supported_dimensions():
         v3.validate("review", review_vote(3, excerpt="def balances(records):\n    totals = made_up()"), evidence)
     # v3.2: a line of dots marks elided code; an abbreviated call is still a fabricated line
     v3.validate("review", review_vote(3, excerpt="def balances(records):\n    ...\n    return dict(totals)"), evidence)
+    # v3.3: an elided argument list is an elision; the substantive fragment must still be verbatim
+    v3.validate("review", review_vote(3, excerpt="def balances(records):\n    ...\n    raise ValueError(...)"), evidence)
     with pytest.raises(ValueError, match="Unsupported evidence excerpt"):
-        v3.validate("review", review_vote(3, excerpt="def balances(records):\n    ...\n    raise ValueError(...)"), evidence)
+        v3.validate("review", review_vote(3, excerpt="def balances(records):\n    ...\n    raise KeyError(...)"), evidence)
+    with pytest.raises(ValueError, match="Unsupported evidence excerpt"):
+        v3.validate("review", review_vote(3, excerpt="( ... )"), evidence)
     with pytest.raises(ValueError, match="Unsupported evidence excerpt"):
         v3.validate("review", review_vote(3, excerpt="..."), evidence)
     # v3.3: inline ellipsis joins verbatim fragments on one line
