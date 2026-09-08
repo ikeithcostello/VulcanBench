@@ -75,3 +75,9 @@ operational notes live here.
   from claude-opus-4-8, that used no tool, and whose response validates, is
   selected with a reviewer_fallback record in the receipt. The card and
   summary must report the count of fallback-served reviews per stage.
+- Opus 5, primary submission 136 (overnight, September 7 to 8): both attempts
+  quoted two verbatim fragments joined by an inline ellipsis on one line.
+  The re-wrap rule now splits excerpt lines on inline ellipsis markers and
+  requires each fragment to be verbatim; fragments are rejoined with a
+  dots-only line. Any fragment absent from the source still stops. The chain
+  sat idle overnight on this stop.

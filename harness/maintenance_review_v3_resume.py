@@ -27,6 +27,7 @@ Usage: python -m harness.maintenance_review_v3_resume calibrate --panel claude
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -113,8 +114,26 @@ def _collapse(text: str) -> str:
     return " ".join(text.split())
 
 
+ELLIPSIS = re.compile(r"\s*(?:\.\.\.|\u2026)\s*")
+
+
 def rewrap_excerpt(excerpt: str, source: list[str]) -> str | None:
-    """Return the verbatim source span whose collapsed form contains the collapsed excerpt."""
+    """Return a verbatim rewrap of the excerpt, or None if any fragment is not in the source.
+
+    Inline ellipsis markers split a line into fragments that are rewrapped
+    separately and rejoined with a dots-only line, which the frozen rule skips.
+    """
+    if v3.excerpt_supported(excerpt, source):
+        return excerpt
+    fragments = [f for f in ELLIPSIS.split(excerpt) if f.strip()]
+    if len(fragments) > 1:
+        spans = [_rewrap_fragment(f, source) for f in fragments]
+        return None if any(sp is None for sp in spans) else "\n...\n".join(spans)
+    return _rewrap_fragment(excerpt, source)
+
+
+def _rewrap_fragment(excerpt: str, source: list[str]) -> str | None:
+    """Return the verbatim source span whose collapsed form contains the collapsed fragment."""
     if v3.excerpt_supported(excerpt, source):
         return excerpt
     target = _collapse(excerpt)
