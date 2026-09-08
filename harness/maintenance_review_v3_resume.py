@@ -76,6 +76,65 @@ def assistant_models(stream_text: str) -> set[str]:
             if line.strip() and "\"type\":\"assistant\"" in line}
 
 
+MATCH_ORDER_ERROR = "Matches must cover every key quirk once, in order"
+QUIRK_ID = re.compile(r"^\s*(Q\d+)\b")
+
+
+def recover_match_ids(folder: Path, panel: str, stage: str) -> bool:
+    """Match responses whose quirk ids carry a description ("Q1 winter tier") or arrive out of order.
+
+    The id is the leading Q-number; entries are reordered to the key's order.
+    Statuses, departure indexes, and reasons are untouched. Any id missing or
+    duplicated is not recovered.
+    """
+    if stage != "match":
+        return False
+    receipts = [folder / f"attempt-{n}.json" for n in (1, 2)]
+    if not all(r.exists() for r in receipts):
+        return False
+    if any(json.loads(r.read_text()).get("error") != MATCH_ORDER_ERROR for r in receipts):
+        return False
+    payload = payload_for(stage, folder.name)
+    if payload is None:
+        return False
+    expected = [q["id"] for q in payload["key"]]
+    for attempt in (1, 2):
+        stream = folder / f"attempt-{attempt}.stream.jsonl"
+        if not stream.exists():
+            continue
+        try:
+            vote = v3.parse_stream_for(panel, stream.read_text())
+        except (ValueError, json.JSONDecodeError, KeyError):
+            continue
+        matches = vote.get("matches")
+        if not isinstance(matches, list):
+            continue
+        by_id = {}
+        original = []
+        for m in matches:
+            hit = QUIRK_ID.match(str(m.get("quirk", "")))
+            if not hit or hit.group(1) in by_id:
+                by_id = None
+                break
+            original.append(m.get("quirk"))
+            by_id[hit.group(1)] = {**m, "quirk": hit.group(1)}
+        if by_id is None or sorted(by_id) != sorted(expected):
+            continue
+        vote["matches"] = [by_id[q] for q in expected]
+        try:
+            v3.validate("match", vote, payload)
+        except ValueError:
+            continue
+        binding = json.loads(receipts[attempt - 1].read_text())["binding"]
+        vote.update(binding=binding, status="complete", stage=stage, panel=panel, kind="match",
+                    operator_recovery={"at": datetime.now(UTC).isoformat(), "method": "quirk ids normalized to key ids and key order",
+                                       "original_quirk_fields": original, "source_attempt": attempt})
+        base.save(folder / "selected.json", vote)
+        print(json.dumps({"event": "match_id_recovery_applied", "call": str(folder.relative_to(OUT)), "attempt": attempt}), flush=True)
+        return True
+    return False
+
+
 def accept_fallback(folder: Path, panel: str, stage: str) -> bool:
     if panel != "claude":
         return False
@@ -114,8 +173,15 @@ def accept_fallback(folder: Path, panel: str, stage: str) -> bool:
     return False
 
 
+_BULLET = re.compile(r"^\s*(?:[*+-]|\d+[.)])\s+")
+
+
 def _collapse(text: str) -> str:
-    return " ".join(text.split())
+    """Whitespace-collapsed comparison form: Markdown code marks and a leading list bullet are ignored.
+
+    Used only to find the verbatim source span; the span itself is returned untouched.
+    """
+    return " ".join(_BULLET.sub("", text).replace("`", "").split())
 
 
 ELLIPSIS = re.compile(r"\s*(?:\.\.\.|\u2026)\s*")
@@ -266,6 +332,9 @@ def main() -> int:
             applied += 1
             continue
         if folder is not None and accept_fallback(folder, panel, folder.parent.name):
+            applied += 1
+            continue
+        if folder is not None and recover_match_ids(folder, panel, folder.parent.name):
             applied += 1
             continue
         if True:

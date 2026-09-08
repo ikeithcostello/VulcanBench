@@ -126,3 +126,16 @@ operational notes live here.
   Muse full pass started under v3.4 from the main tree at the freeze commit;
   the runner must not be edited while it runs, or the pass moves to a
   worktree at that commit like the older panels.
+- Owner decision, September 8, 2026, 10:30 PDT: the scored panel is Muse
+  Spark 1.3 and Grok 4.6 only. The Astra and Opus 5 sensitivity panels are
+  retired: their existing receipts (Astra 230 primaries and 10 repeats, Opus
+  230 primaries, 10 repeats, 10 pairwise, 109 probes, 108 matches) are
+  retained as raw diagnostics but are not resumed, not waited for, and not
+  shown on the card. The self-preference estimate is therefore not
+  published. Combined results no longer depend on the Codex quota reset.
+- Grok, primary 27: both attempts quoted a documentation line with its
+  Markdown code marks and leading bullet stripped. Recovery now matches
+  ignoring code marks and list bullets and returns the verbatim source span.
+  Opus 5, match 109: quirk ids decorated with descriptions under the frozen
+  v3.2 validator; a match-id recovery rule was added but is moot for Opus
+  under the decision above. Both recoveries stay available to the live panels.
