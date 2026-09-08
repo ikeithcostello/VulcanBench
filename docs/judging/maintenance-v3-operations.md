@@ -139,3 +139,14 @@ operational notes live here.
   Opus 5, match 109: quirk ids decorated with descriptions under the frozen
   v3.2 validator; a match-id recovery rule was added but is moot for Opus
   under the decision above. Both recoveries stay available to the live panels.
+- Muse, primary 168: both attempts quoted `history["score"] += 2` where the
+  source line is `self.history[parts[1]]["score"] += 2`; the judge dropped
+  the receiver and index without an elision marker. New recovery rule,
+  omission-only: an excerpt fragment of at least four tokens whose tokens all
+  appear, in order, within one source line (nothing added) is replaced by
+  that verbatim line, original recorded. A wrong value or an absent name
+  still fails; both GLM fabrications were re-checked and still fail. Final
+  source lines are preferred over patch lines.
+- Cursor leaves one detached helper process per call (parent pid 1); they
+  are idle and do not hold the runner. Grok's effective pace is about two
+  minutes per review including CLI start-up.

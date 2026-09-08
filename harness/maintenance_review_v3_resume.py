@@ -202,6 +202,30 @@ def rewrap_excerpt(excerpt: str, source: list[str]) -> str | None:
     return _rewrap_fragment(excerpt, source)
 
 
+_TOKEN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*|\d+|\"[^\"]*\"|'[^']*'|==|!=|<=|>=|\+=|-=|\*=|//=|//|\*\*|[^\s\w]")
+
+
+def _omission_only_line(fragment: str, source: list[str]) -> str | None:
+    """A single source line whose tokens contain the fragment's tokens in order, with nothing added.
+
+    Recovers a judge that shortened a line (dropped a receiver or an index)
+    without inventing anything: every token it wrote must appear, in order,
+    in one source line. A wrong value or a name absent from the line fails.
+    """
+    wanted = _TOKEN.findall(fragment)
+    if len(wanted) < 4:
+        return None
+    for text in sorted(source, key=lambda s: s.startswith("diff --git")):  # final source before the patch text
+        for line in text.splitlines():
+            have = _TOKEN.findall(line)
+            if len(have) <= len(wanted):
+                continue
+            it = iter(have)
+            if all(any(tok == candidate for candidate in it) for tok in wanted):
+                return line if v3.excerpt_supported(line, source) else None
+    return None
+
+
 def _rewrap_fragment(excerpt: str, source: list[str]) -> str | None:
     """Return the minimal verbatim source span whose collapsed form equals the collapsed fragment.
 
@@ -230,7 +254,7 @@ def _rewrap_fragment(excerpt: str, source: list[str]) -> str | None:
                     return span if v3.excerpt_supported(span, source) else None
                 if not target.startswith(joined):
                     break
-    return None
+    return _omission_only_line(excerpt, source)
 
 
 def recover_excerpts(folder: Path, panel: str, stage: str) -> bool:  # noqa: PLR0911, PLR0912, one branch per precondition and attempt
