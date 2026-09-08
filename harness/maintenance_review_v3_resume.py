@@ -137,7 +137,13 @@ def rewrap_excerpt(excerpt: str, source: list[str]) -> str | None:
 
 
 def _rewrap_fragment(excerpt: str, source: list[str]) -> str | None:
-    """Return the verbatim source span whose collapsed form contains the collapsed fragment."""
+    """Return the minimal verbatim source span whose collapsed form equals the collapsed fragment.
+
+    The span must begin on a line the fragment begins with and grow only while
+    it remains a prefix of the fragment, so unrelated preceding code is never
+    pulled in.
+    """
+    excerpt = excerpt.replace("\\n", "\n")  # GLM sometimes double-escapes newlines inside JSON strings
     if v3.excerpt_supported(excerpt, source):
         return excerpt
     target = _collapse(excerpt)
@@ -146,54 +152,71 @@ def _rewrap_fragment(excerpt: str, source: list[str]) -> str | None:
     for text in source:
         lines = text.splitlines()
         for start in range(len(lines)):
-            joined = ""
+            first = _collapse(lines[start])
+            if not first or not target.startswith(first):
+                continue
+            joined = first
             for end in range(start, min(start + 12, len(lines))):
-                joined = _collapse(joined + " " + lines[end])
-                if target in joined:
+                if end > start:
+                    joined = _collapse(joined + " " + lines[end])
+                if joined == target:
                     span = "\n".join(lines[start:end + 1])
                     return span if v3.excerpt_supported(span, source) else None
-                if len(joined) > len(target) + 400:
+                if not target.startswith(joined):
                     break
     return None
 
 
-def recover_excerpts(folder: Path, panel: str, stage: str) -> bool:  # noqa: PLR0911, one early exit per precondition
+def recover_excerpts(folder: Path, panel: str, stage: str) -> bool:  # noqa: PLR0911, PLR0912, one branch per precondition and attempt
     receipts = [folder / f"attempt-{n}.json" for n in (1, 2)]
     if not all(r.exists() for r in receipts):
         return False
     if any(json.loads(r.read_text()).get("error") != EXCERPT_ERROR for r in receipts):
         return False
-    stream = folder / "attempt-1.stream.jsonl"
-    if not stream.exists():
-        return False
     ident = folder.name
-    evidence = v3.read(OUT / "evidence" / f"{ident}.json") if stage in ("primary", "repeat") else None
+    if stage == "calibration" and not ident.startswith("control-"):
+        return False
+    if stage not in ("primary", "repeat", "calibration"):
+        return False
+    evidence = payload_for(stage, ident)
     if evidence is None:
         return False
     source = list(v3.strings(evidence))
-    try:
-        vote = v3.parse_stream_for(panel, stream.read_text())
-    except (ValueError, json.JSONDecodeError, KeyError):
-        return False
-    recovered = {}
-    for dim, detail in vote["dimensions"].items():
-        span = rewrap_excerpt(detail["excerpt"], source)
-        if span is None:
-            print(json.dumps({"event": "excerpt_not_recoverable", "call": ident, "dimension": dim}), flush=True)
-            return False
-        if span != detail["excerpt"]:
-            recovered[dim] = detail["excerpt"]
-            detail["excerpt"] = span
-    v3.validate("review", vote, evidence)
-    vote["reported_score"] = vote["score"]
-    vote.update(v3.host_review_score(vote))
-    binding = json.loads(receipts[0].read_text())["binding"]
-    vote.update(binding=binding, status="complete", stage=stage, panel=panel, kind="review",
-                operator_recovery={"at": datetime.now(UTC).isoformat(), "method": "excerpt re-wrapped to source line breaks",
-                                   "original_excerpts": recovered, "source_attempt": 1})
-    base.save(folder / "selected.json", vote)
-    print(json.dumps({"event": "excerpt_recovery_applied", "call": str(folder.relative_to(OUT)), "dimensions": sorted(recovered)}), flush=True)
-    return True
+    for attempt in (1, 2):
+        stream = folder / f"attempt-{attempt}.stream.jsonl"
+        if not stream.exists():
+            continue
+        try:
+            vote = v3.parse_stream_for(panel, stream.read_text())
+        except (ValueError, json.JSONDecodeError, KeyError):
+            continue
+        recovered = {}
+        for dim, detail in vote.get("dimensions", {}).items():
+            span = rewrap_excerpt(detail["excerpt"], source)
+            if span is None:
+                print(json.dumps({"event": "excerpt_not_recoverable", "call": ident, "attempt": attempt, "dimension": dim,
+                                  "excerpt": detail["excerpt"][:200]}), flush=True)
+                break
+            if span != detail["excerpt"]:
+                recovered[dim] = detail["excerpt"]
+                detail["excerpt"] = span
+        else:
+            try:
+                v3.validate("review", vote, evidence)
+            except ValueError:
+                continue
+            vote["reported_score"] = vote["score"]
+            vote.update(v3.host_review_score(vote))
+            binding = json.loads(receipts[attempt - 1].read_text())["binding"]
+            vote.update(binding=binding, status="complete", stage=stage, panel=panel, kind="review",
+                        operator_recovery={"at": datetime.now(UTC).isoformat(),
+                                           "method": "excerpt re-wrapped to source line breaks",
+                                           "original_excerpts": recovered, "source_attempt": attempt})
+            base.save(folder / "selected.json", vote)
+            print(json.dumps({"event": "excerpt_recovery_applied", "call": str(folder.relative_to(OUT)),
+                              "attempt": attempt, "dimensions": sorted(recovered)}), flush=True)
+            return True
+    return False
 
 
 def newest_unresolved(panel: str) -> Path | None:
