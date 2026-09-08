@@ -156,3 +156,9 @@ operational notes live here.
   word-aligned point inside a source line and span following lines; the
   whole verbatim lines are selected and the original recorded. Fabricated
   text still fails; both GLM cases were re-checked.
+- Muse, probe 39: both attempts quoted the line containing backslash-0 with
+  the escape decoded to a real NUL character inside the JSON string.
+  Recovery re-escapes control characters in the common source spellings
+  (backslash-x hex, backslash-octal, backslash-u) before matching and
+  selects the verbatim line. Excerpt recovery now also covers probe
+  responses, which it had not.
