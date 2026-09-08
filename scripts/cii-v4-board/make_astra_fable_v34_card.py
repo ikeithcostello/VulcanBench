@@ -22,6 +22,7 @@ import json
 import math
 import statistics
 import sys
+import textwrap
 from pathlib import Path
 
 import matplotlib
@@ -166,81 +167,127 @@ def main():  # noqa: PLR0912, PLR0915, one linear figure
     for font in (ROOT / "scripts/rankings-chart").glob("*.ttf"):
         font_manager.fontManager.addfont(font)
     plt.rcParams.update({"font.family": "Geist", "text.color": INK, "svg.fonttype": "path"})
-    fig = plt.figure(figsize=(16, 10), dpi=150, facecolor=PAPER)
+    width_in, height_in = 16, 12.75
+    fig = plt.figure(figsize=(width_in, height_in), dpi=150, facecolor=PAPER)
 
-    def text(x, y, label, size=16, bold=False, heading=False, numeric=False, ha="left", color=INK):
+    def yf(inches):
+        """Figure fraction for a position measured in inches from the top edge."""
+        return 1 - inches / height_in
+
+    def text(x, y_in, label, size=16, bold=False, heading=False, numeric=False, ha="left", color=INK):
         family = "IBM Plex Mono" if numeric else (
             "Chakra Petch SemiBold" if bold else "Chakra Petch Medium") if heading else "Geist"
         weight = (500 if bold else 400) if numeric else ((600 if bold else 500) if heading else (700 if bold else 400))
-        return fig.text(x, y, label, fontsize=size, fontfamily=family, weight=weight, ha=ha, va="center", color=color)
+        return fig.text(x, yf(y_in), label, fontsize=size, fontfamily=family, weight=weight, ha=ha, va="center", color=color)
 
-    def line(x1, x2, y, color=RULE, width=.8):
-        fig.add_artist(plt.Line2D([x1, x2], [y, y], transform=fig.transFigure, color=color, lw=width))
+    def line(x1, x2, y_in, color=RULE, width=.8):
+        fig.add_artist(plt.Line2D([x1, x2], [yf(y_in), yf(y_in)], transform=fig.transFigure, color=color, lw=width))
 
-    logo = fig.add_axes([.045, .914, .034, .0545])
+    def box(x, top_in, w, h_in, face, edge, lw=.8, radius=.006):
+        fig.patches.append(FancyBboxPatch((x, yf(top_in + h_in)), w, h_in / height_in,
+                                          boxstyle=f"round,pad=0,rounding_size={radius}", transform=fig.transFigure,
+                                          facecolor=face, edgecolor=edge, linewidth=lw))
+
+    left, right = .06, .94
+    # Masthead
+    logo_h = .42 / height_in
+    logo = fig.add_axes([left, yf(.86), .42 / width_in, logo_h])
     mark = logo.imshow(plt.imread(ROOT / "docs/assets/vulcanbench-logo.png"))
     mark.set_clip_path(FancyBboxPatch((0, 0), 1, 1, boxstyle="round,pad=0,rounding_size=.22", transform=logo.transAxes))
     logo.axis("off")
-    text(.09, .941, "VulcanBench", 22, True, heading=True)
-    text(.955, .941, "VulcanBench-SWE v4  /  September 2026", 15, ha="right")
-    line(.045, .955, .895)
+    text(left + .038, .65, "VulcanBench", 20, True, heading=True)
+    text(right, .65, "September 2026", 14, ha="right", color=MUTED)
+    line(left, right, 1.05, INK, 1.2)
     if not final:
-        fig.patches.append(FancyBboxPatch((.045, .843), .91, .034, boxstyle="round,pad=0,rounding_size=.004",
-                                          transform=fig.transFigure, facecolor="#f1d9a8", edgecolor="none"))
-        text(.5, .86, f"PRELIMINARY  ·  {coverage['submissions_with_both_reviews']}/{coverage['submissions_total']} reviewed by both judges  ·  "
-                       f"{coverage['submissions_with_probes']}/{coverage['submissions_total']} with intent recovery  ·  not for publication", 13, True, ha="center")
-    text(.045, .79, headline, 34, True, heading=True)
-    text(.045, .743, f"Each model's best effort  ·  {short[faster]} {ratio:.1f}× faster  ·  n=23 tasks each", 18)  # noqa: RUF001
+        text(right, 1.28, f"Preliminary: {coverage['submissions_with_both_reviews']}/{coverage['submissions_total']} reviewed by both judges, "
+                          f"{coverage['submissions_with_probes']}/{coverage['submissions_total']} with intent recovery. Not for publication.",
+             11.5, ha="right", color="#9a6b12")
 
-    # Comparison table: one row per metric, a column per model, and the gap.
+    # Title
+    text(left, 1.78, "VulcanBench-SWE v4: Astra vs. Fable 5.1", 33, True, heading=True)
+    text(left, 2.24, "Combined score at each model's highest-scoring effort. 23 tasks per model. "
+                     "Code quality judged by Muse Spark 1.3 and Grok 4.6.", 15, color=MUTED)
+
+    # Score panels
     a, f = best["astra"], best["fable"]
+    panel_top, panel_h, panel_w = 2.6, 2.25, .415
+    for model, g, x in (("astra", a, left), ("fable", f, right - panel_w)):
+        tint = {"astra": "#e6f4ef", "fable": "#fbeae2"}[model]
+        box(x, panel_top, panel_w, panel_h, tint, RULE)
+        fig.add_artist(plt.Line2D([x + .012, x + panel_w - .012], [yf(panel_top + .05), yf(panel_top + .05)],
+                                  transform=fig.transFigure, color=COLORS[model], lw=3.5, solid_capstyle="butt"))
+        text(x + .022, panel_top + .45, NAMES[model], 21, True, heading=True, color=COLORS[model])
+        text(x + .022, panel_top + .82, f"{g['effort'].capitalize()} effort  ·  {HARNESS[model]}", 12.5, color=MUTED)
+        text(x + .022, panel_top + 1.22, "COMBINED SCORE / 100", 11.5, True, color=MUTED)
+        text(x + .022, panel_top + 1.74, f"{g['combined']['mean']:.2f}", 50, True, numeric=True)
+        text(x + panel_w - .022, panel_top + 1.6, f"{g['passed']}/{g['n']} tasks passed", 13, ha="right")
+        text(x + panel_w - .022, panel_top + 1.9, f"{g['minutes']['mean']:.1f} min per task", 13, ha="right", color=MUTED)
+    diff = f["combined"]["mean"] - a["combined"]["mean"]
+    text(.5, panel_top + panel_h / 2 - .14, "difference", 11, ha="center", color=MUTED)
+    text(.5, panel_top + panel_h / 2 + .14, f"{diff:+.2f}", 17, True, numeric=True, ha="center")
+
+    # Table
+    text(left, 5.35, "Table 1  |  Score components at the selected efforts", 14.5, False, heading=True)
+    col_a, col_f, col_d = .60, .78, .94
+    line(left, right, 5.6, INK, 1.2)
+    text(left, 5.82, "Component", 12.5, True)
+    text(col_a, 5.82, "GPT-6 Astra", 12.5, True, ha="right")
+    text(col_f, 5.82, "Fable 5.1", 12.5, True, ha="right")
+    text(col_d, 5.82, "Difference", 12.5, True, ha="right")
+    text(col_d, 6.06, "Fable minus Astra", 10, ha="right", color=MUTED)
+    line(left, right, 6.22, INK, .6)
+
+    def se(stat):
+        return {"mean": stat["se"], "se": None} if stat.get("se") is not None else {"mean": None, "se": None}
+
     rows = [
-        ("Combined score  (50 / 8.5 / 8.5 / 33)", a["combined"], f["combined"], True, 2),
-        ("Combined score at the old 20% profile", a["combined_20pct"], f["combined_20pct"], False, 2),
-        ("Code quality", a["code_quality"], f["code_quality"], True, 2),
-        ("    Readability", a["readability"], f["readability"], False, 1),
-        ("    Maintainability", a["maintainability"], f["maintainability"], False, 1),
-        ("    Intent recovery", a["l2"], f["l2"], False, 1),
-        ("    Muse Spark 1.3", a["by_panel"]["muse"], f["by_panel"]["muse"], False, 1),
-        ("    Grok 4.6", a["by_panel"]["grok"], f["by_panel"]["grok"], False, 1),
-        ("Mean runtime per task, minutes", a["minutes"], f["minutes"], False, 2),
-        ("Tasks fully passed", {"mean": a["passed"], "se": None}, {"mean": f["passed"], "se": None}, False, 0),
+        ("Combined score, 33% Code quality (a)", a["combined"], f["combined"], 2, True, False),
+        ("Combined score, prior 20% profile", a["combined_20pct"], f["combined_20pct"], 2, False, False),
+        ("Standard error of combined score", se(a["combined"]), se(f["combined"]), 2, False, True),
+        ("Code quality (b)", a["code_quality"], f["code_quality"], 2, True, False),
+        ("    Human readability", a["readability"], f["readability"], 1, False, False),
+        ("    Maintainability", a["maintainability"], f["maintainability"], 1, False, False),
+        ("    Intent recovery", a["l2"], f["l2"], 1, False, False),
+        ("    Rated by Muse Spark 1.3", a["by_panel"]["muse"], f["by_panel"]["muse"], 1, False, False),
+        ("    Rated by Grok 4.6", a["by_panel"]["grok"], f["by_panel"]["grok"], 1, False, False),
+        ("Standard error of Code quality", se(a["code_quality"]), se(f["code_quality"]), 2, False, True),
+        ("Tasks fully passed, of 23", {"mean": a["passed"]}, {"mean": f["passed"]}, 0, False, False),
+        ("Mean runtime per task, minutes (c)", a["minutes"], f["minutes"], 2, False, True),
     ]
-    col_label, col_a, col_f, col_d = .045, .55, .74, .93
-    top, step = .585, .049
-    line(col_label, .955, top + .052, RULE, .8)
-    for model, x in (("astra", col_a), ("fable", col_f)):
-        g = best[model]
-        text(x, top + .098, NAMES[model], 19, True, heading=True, ha="right", color=COLORS[model])
-        text(x, top + .070, f"{g['effort'].capitalize()} effort · {HARNESS[model]}", 12, ha="right", color=MUTED)
-    text(col_d, top + .098, "Fable minus Astra", 13, True, ha="right", color=MUTED)
-    for i, (label, sa, sf, emphasis, digits) in enumerate(rows):
-        y = top - i * step
-        text(col_label, y, label, 15 if emphasis else 14, emphasis)
+    step = .36
+    y = 6.5
+    for label, sa, sf, digits, emphasis, group_end in rows:
+        text(left, y, label, 13 if emphasis else 12.5, emphasis)
         for x, stat in ((col_a, sa), (col_f, sf)):
             if stat["mean"] is None:
-                text(x, y, "pending", 13, numeric=True, ha="right", color=MUTED)
-                continue
-            value = f"{stat['mean']:.{digits}f}" if digits else f"{int(stat['mean'])}/23"
-            if stat.get("se") and emphasis:
-                value += f" ± {stat['se']:.2f}"
-            text(x, y, value, 20 if emphasis else 16, emphasis, numeric=True, ha="right")
-        if sa["mean"] is not None and sf["mean"] is not None:
+                text(x, y, "pending", 12, numeric=True, ha="right", color=MUTED)
+            else:
+                text(x, y, f"{stat['mean']:.{digits}f}", 14.5 if emphasis else 13.5, emphasis, numeric=True, ha="right")
+        if sa["mean"] is not None and sf["mean"] is not None and not label.startswith("Standard error"):
             delta = sf["mean"] - sa["mean"]
-            shown = f"{delta:+.{max(digits, 1)}f}" if digits else f"{int(delta):+d}"
-            text(col_d, y, shown, 16 if emphasis else 14, emphasis, numeric=True, ha="right",
-                 color=COLORS["fable"] if delta > 0 else COLORS["astra"] if delta < 0 else MUTED)
-        if i in (2, 7):
-            line(col_label, .955, y - step / 2, RULE, .6)
-    bottom = top - (len(rows) - 1) * step - step / 2
-    line(col_label, .955, bottom, RULE, .8)
+            shown = (f"{delta:+.{max(digits, 1)}f}" if digits else f"{int(delta):+d}") if delta else "0"
+            text(col_d, y, shown, 14.5 if emphasis else 13.5, emphasis, numeric=True, ha="right")
+        y += step
+        if group_end:
+            line(left, right, y - step / 2, RULE, .6)
+    line(left, right, y - step / 2, INK, 1.2)
+
     n = len(complete_efforts)
-    text(.045, bottom - .040, f"Across all {n} matched efforts: Fable higher Code quality {n - wins['code_quality']}/{n} · "
-                              f"higher combined {n - wins['combined']}/{n} · Astra faster {wins['runtime']}/{n}", 16, True)
-    text(.045, bottom - .078, "Code quality: equal average of Muse Spark 1.3 (Meta) and Grok 4.6 (xAI), labs with no model on this board, "
-                              "both passed a 20-gate calibration. LLM judgment, not human validation.", 12, color=MUTED)
-    text(.045, bottom - .104, f"± is 1 task SE, not significance · Runtime excludes judging · *Opus 4.8 fallbacks in 11/115 Fable runs · "
-                              f"Protocol v3.4, hash {digest((RUN / 'protocol.json').read_bytes())[:8]} · 230 runs · 23 Python rewrites of C binaries", 12, color=MUTED)
+    text(left, y + .12, f"Across all {n} matched efforts, Fable had the higher Code quality at {n - wins['code_quality']}/{n} and the higher "
+                        f"combined score at {n - wins['combined']}/{n}; Astra was faster at {wins['runtime']}/{n}.", 12.5)
+    notes = [
+        "(a) Combined score = 0.50 functional + 0.085 automated quality + 0.085 security + 0.33 Code quality. Code quality = 24 points reviewed "
+        "panel + 9 points intent recovery until the measured-maintenance layer exists.",
+        "(b) Equal average of Muse Spark 1.3 (Meta) and Grok 4.6 (xAI), labs with no model on this board, each passing a 20-gate calibration "
+        "before scoring. Model judgment, not human validation. Standard errors are across tasks; no significance is implied.",
+        f"(c) Runtime excludes judging. *11/115 Fable runs used Opus 4.8 fallbacks. Protocol v3.4, hash {digest((RUN / 'protocol.json').read_bytes())[:8]}; "
+        "230 runs; 23 Python rewrites of C-built binaries. docs/judging/code-quality-maintenance-v3.md",
+    ]
+    note_y = y + .52
+    for note in notes:
+        for chunk in textwrap.wrap(note, 158):
+            text(left, note_y, chunk, 10.5, color=MUTED)
+            note_y += .24
 
     suffix = "" if final else "-preliminary"
     out = OUTPUT / f"astra-vs-fable51-v34{suffix}.png"
