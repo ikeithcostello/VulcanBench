@@ -22,7 +22,6 @@ import json
 import math
 import statistics
 import sys
-import textwrap
 from pathlib import Path
 
 import matplotlib
@@ -41,7 +40,7 @@ RUN = ROOT / "runs-code-quality-maintenance-v3.4"
 OUTPUT = ROOT / "docs/results/swe-v4-astra-fable51-2026-09"
 PAPER, INK, RULE, MUTED = "#f7f5f0", "#171917", "#c6c5bc", "#6b6b66"
 COLORS = {"astra": "#10A37F", "fable": "#D97757"}
-NAMES = {"astra": "GPT-6 Astra", "fable": "Fable 5.1 with fallbacks*"}
+NAMES = {"astra": "GPT-6 Astra", "fable": "Fable 5.1"}
 HARNESS = {"astra": "Codex", "fable": "Claude Code"}
 PANELS = ("muse", "grok")
 PANEL_NAMES = {"muse": "Muse Spark 1.3 (Meta)", "grok": "Grok 4.6 (xAI)"}
@@ -167,7 +166,7 @@ def main():  # noqa: PLR0912, PLR0915, one linear figure
     for font in (ROOT / "scripts/rankings-chart").glob("*.ttf"):
         font_manager.fontManager.addfont(font)
     plt.rcParams.update({"font.family": "Geist", "text.color": INK, "svg.fonttype": "path"})
-    width_in, height_in = 16, 12.75
+    width_in, height_in = 16, 12.5
     fig = plt.figure(figsize=(width_in, height_in), dpi=150, facecolor=PAPER)
 
     def yf(inches):
@@ -204,13 +203,13 @@ def main():  # noqa: PLR0912, PLR0915, one linear figure
              11.5, ha="right", color="#9a6b12")
 
     # Title
-    text(left, 1.78, "VulcanBench-SWE v4: Astra vs. Fable 5.1", 33, True, heading=True)
-    text(left, 2.24, "Combined score at each model's highest-scoring effort. 23 tasks per model. "
+    text(left, 1.9, "VulcanBench-SWE v4: Astra vs. Fable 5.1", 33, True, heading=True)
+    text(left, 2.38, "Combined score at each model's highest-scoring effort. 23 tasks per model. "
                      "Code quality judged by Muse Spark 1.3 and Grok 4.6.", 15, color=MUTED)
 
     # Score panels
     a, f = best["astra"], best["fable"]
-    panel_top, panel_h, panel_w = 2.6, 2.25, .415
+    panel_top, panel_h, panel_w = 2.95, 2.3, .42
     for model, g, x in (("astra", a, left), ("fable", f, right - panel_w)):
         tint = {"astra": "#e6f4ef", "fable": "#fbeae2"}[model]
         box(x, panel_top, panel_w, panel_h, tint, RULE)
@@ -222,29 +221,26 @@ def main():  # noqa: PLR0912, PLR0915, one linear figure
         text(x + .022, panel_top + 1.74, f"{g['combined']['mean']:.2f}", 50, True, numeric=True)
         text(x + panel_w - .022, panel_top + 1.6, f"{g['passed']}/{g['n']} tasks passed", 13, ha="right")
         text(x + panel_w - .022, panel_top + 1.9, f"{g['minutes']['mean']:.1f} min per task", 13, ha="right", color=MUTED)
-    diff = f["combined"]["mean"] - a["combined"]["mean"]
-    text(.5, panel_top + panel_h / 2 - .14, "difference", 11, ha="center", color=MUTED)
-    text(.5, panel_top + panel_h / 2 + .14, f"{diff:+.2f}", 17, True, numeric=True, ha="center")
 
     # Table
-    text(left, 5.35, "Table 1  |  Score components at the selected efforts", 14.5, False, heading=True)
+    text(left, 6.0, "Table 1  |  Score components at the selected efforts", 14.5, False, heading=True)
     col_a, col_f, col_d = .60, .78, .94
-    line(left, right, 5.6, INK, 1.2)
-    text(left, 5.82, "Component", 12.5, True)
-    text(col_a, 5.82, "GPT-6 Astra", 12.5, True, ha="right")
-    text(col_f, 5.82, "Fable 5.1", 12.5, True, ha="right")
-    text(col_d, 5.82, "Difference", 12.5, True, ha="right")
-    text(col_d, 6.06, "Fable minus Astra", 10, ha="right", color=MUTED)
-    line(left, right, 6.22, INK, .6)
+    line(left, right, 6.28, INK, 1.2)
+    text(left, 6.52, "Component", 12.5, True)
+    text(col_a, 6.52, "GPT-6 Astra", 12.5, True, ha="right")
+    text(col_f, 6.52, "Fable 5.1", 12.5, True, ha="right")
+    text(col_d, 6.52, "Difference", 12.5, True, ha="right")
+    text(col_d, 6.78, "Fable minus Astra", 10, ha="right", color=MUTED)
+    line(left, right, 6.95, INK, .6)
 
     def se(stat):
         return {"mean": stat["se"], "se": None} if stat.get("se") is not None else {"mean": None, "se": None}
 
     rows = [
-        ("Combined score, 33% Code quality (a)", a["combined"], f["combined"], 2, True, False),
+        ("Combined score, 33% Code quality", a["combined"], f["combined"], 2, True, False),
         ("Combined score, prior 20% profile", a["combined_20pct"], f["combined_20pct"], 2, False, False),
         ("Standard error of combined score", se(a["combined"]), se(f["combined"]), 2, False, True),
-        ("Code quality (b)", a["code_quality"], f["code_quality"], 2, True, False),
+        ("Code quality", a["code_quality"], f["code_quality"], 2, True, False),
         ("    Human readability", a["readability"], f["readability"], 1, False, False),
         ("    Maintainability", a["maintainability"], f["maintainability"], 1, False, False),
         ("    Intent recovery", a["l2"], f["l2"], 1, False, False),
@@ -252,17 +248,19 @@ def main():  # noqa: PLR0912, PLR0915, one linear figure
         ("    Rated by Grok 4.6", a["by_panel"]["grok"], f["by_panel"]["grok"], 1, False, False),
         ("Standard error of Code quality", se(a["code_quality"]), se(f["code_quality"]), 2, False, True),
         ("Tasks fully passed, of 23", {"mean": a["passed"]}, {"mean": f["passed"]}, 0, False, False),
-        ("Mean runtime per task, minutes (c)", a["minutes"], f["minutes"], 2, False, True),
+        ("Mean runtime per task, minutes", a["minutes"], f["minutes"], 2, False, True),
     ]
-    step = .36
-    y = 6.5
+    step = .40
+    y = 7.28
     for label, sa, sf, digits, emphasis, group_end in rows:
-        text(left, y, label, 13 if emphasis else 12.5, emphasis)
+        quiet = label.startswith("Standard error")
+        text(left, y, label, 13 if emphasis else 12.5, emphasis, color=MUTED if quiet else INK)
         for x, stat in ((col_a, sa), (col_f, sf)):
             if stat["mean"] is None:
                 text(x, y, "pending", 12, numeric=True, ha="right", color=MUTED)
             else:
-                text(x, y, f"{stat['mean']:.{digits}f}", 14.5 if emphasis else 13.5, emphasis, numeric=True, ha="right")
+                text(x, y, f"{stat['mean']:.{digits}f}", 14.5 if emphasis else 13.5, emphasis, numeric=True, ha="right",
+                     color=MUTED if quiet else INK)
         if sa["mean"] is not None and sf["mean"] is not None and not label.startswith("Standard error"):
             delta = sf["mean"] - sa["mean"]
             shown = (f"{delta:+.{max(digits, 1)}f}" if digits else f"{int(delta):+d}") if delta else "0"
@@ -272,22 +270,6 @@ def main():  # noqa: PLR0912, PLR0915, one linear figure
             line(left, right, y - step / 2, RULE, .6)
     line(left, right, y - step / 2, INK, 1.2)
 
-    n = len(complete_efforts)
-    text(left, y + .12, f"Across all {n} matched efforts, Fable had the higher Code quality at {n - wins['code_quality']}/{n} and the higher "
-                        f"combined score at {n - wins['combined']}/{n}; Astra was faster at {wins['runtime']}/{n}.", 12.5)
-    notes = [
-        "(a) Combined score = 0.50 functional + 0.085 automated quality + 0.085 security + 0.33 Code quality. Code quality = 24 points reviewed "
-        "panel + 9 points intent recovery until the measured-maintenance layer exists.",
-        "(b) Equal average of Muse Spark 1.3 (Meta) and Grok 4.6 (xAI), labs with no model on this board, each passing a 20-gate calibration "
-        "before scoring. Model judgment, not human validation. Standard errors are across tasks; no significance is implied.",
-        f"(c) Runtime excludes judging. *11/115 Fable runs used Opus 4.8 fallbacks. Protocol v3.4, hash {digest((RUN / 'protocol.json').read_bytes())[:8]}; "
-        "230 runs; 23 Python rewrites of C-built binaries. docs/judging/code-quality-maintenance-v3.md",
-    ]
-    note_y = y + .52
-    for note in notes:
-        for chunk in textwrap.wrap(note, 158):
-            text(left, note_y, chunk, 10.5, color=MUTED)
-            note_y += .24
 
     suffix = "" if final else "-preliminary"
     out = OUTPUT / f"astra-vs-fable51-v34{suffix}.png"
