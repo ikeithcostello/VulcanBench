@@ -81,3 +81,19 @@ operational notes live here.
   requires each fragment to be verbatim; fragments are rejoined with a
   dots-only line. Any fragment absent from the source still stops. The chain
   sat idle overnight on this stop.
+
+## v3.3 calibration, September 8, 2026
+
+- Two v3.3 freezes were superseded before any counted call (argparse panel
+  names; then inline-ellipsis and punctuation-fragment excerpt rules). Both
+  directories retained. Live freeze hash b82da598.
+- GLM 5.3: on control 0, repeat 2, both attempts contained a fabricated
+  excerpt: attempt 1 quoted `CARD_FEE_FIXED_CENTS = 25` (the file says 30);
+  attempt 2 quoted a dictionary named METRIC_TO_AXIOM that does not exist in
+  any file. These are not quoting variants; no rule recovers an invented
+  quote. Under gate 1 (validity) after the single permitted retry, GLM 5.3
+  fails calibration. Two other GLM reviews were recovered by the excerpt
+  re-wrap rule (inline ellipsis joins, minimal spans, original recorded).
+  Awaiting the owner's acknowledgement before recording the panel as
+  failed; nothing further runs for GLM meanwhile.
+- Grok 4.6: running clean, 7 reviews in, about 50 seconds per review.
