@@ -112,3 +112,11 @@ operational notes live here.
   symlinks to the v3.3 and v3.2 run directories and the comparison file.
   `verify_frozen` passed from the worktree before the first call. Launcher:
   `logs/cii-v4-maint-v33-fullpass-grok.sh`.
+- Opus 5 sensitivity chain (v3.2) died at primary review 189: after a
+  structured-output stop the wrapper re-invoked the runner, which by then
+  had been amended for v3.3 and pointed at that directory, so the frozen
+  check could not even find its protocol. No receipt was affected. The v3.2
+  panels now run from a worktree at commit e42e69f0
+  (`/Users/morganlinton/dev/VulcanBench-frozen-v32`), whose runner and
+  document match the v3.2 hashes; `verify_frozen` passed from it before the
+  relaunch. Astra's launcher for September 12 points at the same worktree.
