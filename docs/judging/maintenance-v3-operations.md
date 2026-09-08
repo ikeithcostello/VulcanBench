@@ -162,3 +162,10 @@ operational notes live here.
   (backslash-x hex, backslash-octal, backslash-u) before matching and
   selects the verbatim line. Excerpt recovery now also covers probe
   responses, which it had not.
+- Muse, probe 47: the judge process exited 143 after "received SIGTERM";
+  no response was produced. The Contributor-tier solver sweep's status
+  file updated four seconds later, consistent with a new Muse session on
+  the shared machine terminating the other. Wrapper rule: an outside kill
+  with no terminal event is a transport fault and gets the protocol's one
+  fresh attempt; a second kill on the same call stops for a person. The
+  sweep was not modified.

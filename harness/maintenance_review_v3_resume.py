@@ -80,6 +80,29 @@ MATCH_ORDER_ERROR = "Matches must cover every key quirk once, in order"
 QUIRK_ID = re.compile(r"^\s*(Q\d+)\b")
 
 
+def retry_external_kill(folder: Path) -> bool:
+    """A judge process ended by an outside SIGTERM (exit 143) is a transport failure, not a response.
+
+    Grants the single fresh attempt the protocol allows for transport faults
+    when only attempt 1 exists and its stream has no terminal event.
+    """
+    receipt = folder / "attempt-1.json"
+    if not receipt.exists() or (folder / "attempt-2.json").exists():
+        return False
+    rec = json.loads(receipt.read_text())
+    if rec.get("status") != "failed" or rec.get("retryable") is not False:
+        return False
+    if "exit 143" not in str(rec.get("error", "")) and "SIGTERM" not in str(rec.get("error", "")):
+        return False
+    rec["retryable"] = True
+    rec["operator_review"] = {"at": datetime.now(UTC).isoformat(),
+                              "finding": "Judge process received SIGTERM from outside the runner (exit 143); no response was produced.",
+                              "action": "Transport fault: one fresh attempt per the protocol; receipt retained."}
+    receipt.write_text(json.dumps(rec, indent=2, sort_keys=True))
+    print(json.dumps({"event": "external_kill_retry", "call": str(folder.relative_to(OUT))}), flush=True)
+    return True
+
+
 def recover_match_ids(folder: Path, panel: str, stage: str) -> bool:
     """Match responses whose quirk ids carry a description ("Q1 winter tier") or arrive out of order.
 
@@ -403,6 +426,9 @@ def main() -> int:
             applied += 1
             continue
         if folder is not None and recover_match_ids(folder, panel, folder.parent.name):
+            applied += 1
+            continue
+        if folder is not None and retry_external_kill(folder):
             applied += 1
             continue
         if True:
