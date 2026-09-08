@@ -166,7 +166,7 @@ def main():  # noqa: PLR0912, PLR0915, one linear figure
     for font in (ROOT / "scripts/rankings-chart").glob("*.ttf"):
         font_manager.fontManager.addfont(font)
     plt.rcParams.update({"font.family": "Geist", "text.color": INK, "svg.fonttype": "path"})
-    width_in, height_in = 16, 12.7
+    width_in, height_in = 16, 11.1
     fig = plt.figure(figsize=(width_in, height_in), dpi=150, facecolor=PAPER)
 
     def yf(inches):
@@ -197,10 +197,6 @@ def main():  # noqa: PLR0912, PLR0915, one linear figure
     text(left + .038, .65, "VulcanBench", 20, True, heading=True)
     text(right, .65, "September 2026", 14, ha="right", color=MUTED)
     line(left, right, 1.05, INK, 1.2)
-    if not final:
-        text(right, 1.28, f"Preliminary: {coverage['submissions_with_both_reviews']}/{coverage['submissions_total']} reviewed by both judges, "
-                          f"{coverage['submissions_with_probes']}/{coverage['submissions_total']} with intent recovery. Not for publication.",
-             11.5, ha="right", color="#9a6b12")
 
     # Title
     text(left, 1.9, "VulcanBench-SWE v4: Astra vs. Fable 5.1", 33, True, heading=True)
@@ -234,7 +230,7 @@ def main():  # noqa: PLR0912, PLR0915, one linear figure
                                           transform=fig.transFigure, color=COLORS[model], lw=2))
 
     # Table
-    text(left, 6.75, "Table 1  |  Score components at each model's best effort", 14.5, False, heading=True)
+    text(left, 6.75, "Table 1  |  Code quality at each model's best effort", 14.5, False, heading=True)
     col_a, col_f, col_d = .60, .78, .94
     line(left, right, 7.03, INK, 1.2)
     text(left, 7.27, "Component", 12.5, True)
@@ -248,13 +244,10 @@ def main():  # noqa: PLR0912, PLR0915, one linear figure
         return {"mean": stat["se"], "se": None} if stat.get("se") is not None else {"mean": None, "se": None}
 
     rows = [
-        ("Combined score, 33% Code quality", a["combined"], f["combined"], 2, True, False),
-        ("Combined score, prior 20% profile", a["combined_20pct"], f["combined_20pct"], 2, False, False),
-        ("Standard error of combined score", se(a["combined"]), se(f["combined"]), 2, False, True),
         ("Code quality", a["code_quality"], f["code_quality"], 2, True, False),
         ("    Human readability", a["readability"], f["readability"], 1, False, False),
         ("    Maintainability", a["maintainability"], f["maintainability"], 1, False, False),
-        ("    Intent recovery", a["l2"], f["l2"], 1, False, False),
+        *([("    Intent recovery", a["l2"], f["l2"], 1, False, False)] if a["l2"]["mean"] is not None and f["l2"]["mean"] is not None else []),
         ("    Rated by Muse Spark 1.3", a["by_panel"]["muse"], f["by_panel"]["muse"], 1, False, False),
         ("    Rated by Grok 4.6", a["by_panel"]["grok"], f["by_panel"]["grok"], 1, False, False),
         ("Standard error of Code quality", se(a["code_quality"]), se(f["code_quality"]), 2, False, True),
