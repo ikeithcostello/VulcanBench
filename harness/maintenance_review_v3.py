@@ -7,6 +7,11 @@ calibration gates 1 to 17, and the pre-registered single-panel rule. L3
 measured maintenance is a separate runner. L4 signals come from
 harness.evaluator.readability_signals and are frozen at prepare time.
 
+v3.3 (September 8, 2026): the scored panel is GLM 5.3 (ZCode CLI) and Grok
+4.6 (Cursor CLI), two labs with no model on the board. Astra and Opus 5,
+run under v3.2 in its own directory, become disclosed sensitivity panels
+read by summarize; their receipts are never copied or rebound.
+
 Stages, all resumable from saved receipts and bound to the frozen protocol:
 
     prepare                     freeze evidence, controls, keys, order, protocol
@@ -31,7 +36,9 @@ import json
 import math
 import os
 import random
+import re
 import signal
+import sqlite3
 import statistics
 import subprocess
 import tempfile
@@ -44,17 +51,25 @@ from pathlib import Path
 from harness import claude_retrospective as claude
 from harness import maintenance_review_v2 as v2
 from harness import retrospective_judging as base
+from harness.agent.cli_agents import (
+    _ZCODE_AUX_QUERY_SOURCES,
+    _read_json_file,
+    _zcode_project_config,
+    _zcode_session_db_path,
+    _zcode_user_config_path,
+)
 from harness.claude_review_guard import quota_ok
 from harness.evaluator.readability_signals import analyze_source
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "runs-code-quality-maintenance-v3.2"
+OUT = ROOT / "runs-code-quality-maintenance-v3.3"
+SENSITIVITY_OUT = ROOT / "runs-code-quality-maintenance-v3.2"
 DOC = ROOT / "docs/judging/code-quality-maintenance-v3.md"
 COMPARISON = v2.COMPARISON
 TASKS = v2.TASKS
 CONTROLS_DIR = ROOT / "docs/judging/controls-v3"
 KEYS_DIR = ROOT / "docs/judging/quirk-keys-v3"
-PROTOCOL_ID = "code-quality-maintenance-v3.2"
+PROTOCOL_ID = "code-quality-maintenance-v3.3"
 SEED = 20260907
 READER_MODEL = "claude-haiku-4-5-20251001"
 STRUCTURED_OUTPUT_TOOL = "StructuredOutput"
@@ -62,7 +77,16 @@ STRUCTURED_OUTPUT_TOOL = "StructuredOutput"
 READABILITY = ("naming", "presentation", "intent")
 MAINTAINABILITY = ("structure", "changeability", "verifiability")
 DIMENSIONS = READABILITY + MAINTAINABILITY
-PANELS = ("astra", "claude")
+PANELS = ("glm", "grok")
+SENSITIVITY_PANELS = ("astra", "claude")
+ZCODE = Path.home() / ".nvm/versions/node/v24.16.0/bin/zcode"
+NODE24_BIN = Path.home() / ".nvm/versions/node/v24.16.0/bin"
+CURSOR = Path.home() / ".local/bin/cursor-agent"
+GLM_MODEL = "zai/glm-5.3"
+GROK_MODEL = "cursor-grok-4.6-medium"
+GROK_DISPLAY = "Cursor Grok 4.6 Medium"
+ZCODE_DENIED_TOOLS = ("Bash", "Edit", "Write", "MultiEdit", "NotebookEdit", "Read", "Glob", "Grep", "LS",
+                      "WebFetch", "WebSearch", "web_search", "Task", "TodoWrite", "AskUserQuestion")
 REPEATS = 5
 GATE_ALLOWANCE = {"max_failing_gates": 1, "max_shortfall": 0.5}
 CONTROL_FILES = (
@@ -152,6 +176,7 @@ that quirk; partial means the condition or the effect is stated but the other
 is missing or wrong; missed means no listed departure corresponds to it.
 Match on meaning, not wording. One listed departure may match at most one
 quirk. Give the index of the matched departure or null. Do not rate quality.
+Set quirk to the key id exactly as given, for example Q1, and nothing else.
 """
 READER_INSTRUCTION = """Read the specification and the source, then answer each question using
 only what the code and specification say. Do not run anything. Answer with a
@@ -370,7 +395,12 @@ def validate(kind: str, vote: dict, payload: dict) -> None:  # noqa: PLR0912, PL
     if kind == "match":
         expected = [q["id"] for q in payload["key"]]
         matches = vote.get("matches")
-        if not isinstance(matches, list) or [m.get("quirk") for m in matches] != expected:
+        if not isinstance(matches, list):
+            raise ValueError("Matches must cover every key quirk once, in order")
+        for m in matches:  # deterministic normalizer: "Q1: description" or "Q1 (...)" means Q1
+            if isinstance(m.get("quirk"), str):
+                m["quirk"] = re.split(r"[:\s(]", m["quirk"].strip(), maxsplit=1)[0]
+        if [m.get("quirk") for m in matches] != expected:
             raise ValueError("Matches must cover every key quirk once, in order")
         count = len(payload["departures"])
         for m in matches:
@@ -507,6 +537,159 @@ def claude_vote(text: str, folder: Path, name: str, settings: dict, schema: dict
             "duration_s": time.monotonic() - started, "completed_at": datetime.now(UTC).isoformat(), "argv": argv}
 
 
+def zcode_vote(text: str, folder: Path, name: str, settings: dict, schema: dict) -> dict:
+    """GLM through the ZCode CLI: headless prompt, read-only plan mode, tool denylist, pinned model.
+
+    The system text is folded into the prompt because the CLI has no system
+    flag. Model identity is read back from ZCode's own session database, and
+    any tool usage row for the session rejects the response.
+    """
+    prompt_text = SYSTEM + "\n\n" + text + "\nRequired JSON schema:\n" + base.canonical(schema)
+    (folder / f"{name}.prompt.txt").write_text(prompt_text)
+    env = {k: v for k, v in os.environ.items() if not k.endswith("_API_KEY")}
+    env["PATH"] = f"{NODE24_BIN}:{env.get('PATH', '')}"
+    started = time.monotonic()
+    with tempfile.TemporaryDirectory(prefix="vb-zcode-judge-") as scratch:
+        work = Path(scratch)
+        user_config = _read_json_file(_zcode_user_config_path())
+        (work / ".zcode").mkdir()
+        config = _zcode_project_config(settings["model"].split("/", 1)[1], network=False,
+                                       effort=settings.get("effort"), user_config=user_config)
+        config.setdefault("permission", {})["disallowedTools"] = list(ZCODE_DENIED_TOOLS)
+        (work / ".zcode" / "config.json").write_text(json.dumps(config, indent=1) + "\n")
+        argv = [str(settings["zcode"]), "--prompt", prompt_text, "--cwd", str(work), "--mode", "plan", "--json",
+                "--no-color", "--disallowed-tools", *ZCODE_DENIED_TOOLS]
+        proc = subprocess.Popen(argv, cwd=work, env=env, text=True, stdin=subprocess.DEVNULL,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+        try:
+            stdout, stderr = proc.communicate(timeout=settings["timeout"])
+        except subprocess.TimeoutExpired:
+            os.killpg(proc.pid, signal.SIGKILL)
+            stdout, stderr = proc.communicate()
+            (folder / f"{name}.stream.jsonl").write_text(stdout)
+            raise RuntimeError("Timeout; no automatic retry") from None
+    (folder / f"{name}.stream.jsonl").write_text(stdout)
+    (folder / f"{name}.stderr.txt").write_text(stderr)
+    if proc.returncode:
+        raise RuntimeError(f"zcode exit {proc.returncode}: {stderr[-300:]}")
+    vote = parse_zcode_output(stdout)
+    identity = zcode_session_identity(_zcode_session_db_path(user_config), vote["session_id"], _ZCODE_AUX_QUERY_SOURCES)
+    (folder / f"{name}.identity.json").write_text(base.canonical(identity))
+    if identity["models"] != [settings["model"]]:
+        raise RuntimeError(f"Judge model changed: {identity['models']}")
+    if settings.get("effort") and identity["variants"] != [settings["effort"]]:
+        raise RuntimeError(f"Judge effort changed: {identity['variants']}")
+    if identity["tool_rows"]:
+        raise RuntimeError("Judge attempted tool use")
+    return {**vote, "model_reported": settings["model"], "model_identity": identity,
+            "judge_model_requested": settings["model"], "judge_effort_requested": settings.get("effort"),
+            "duration_s": time.monotonic() - started, "completed_at": datetime.now(UTC).isoformat(),
+            "argv": [argv[0], "--prompt", "<prompt omitted>", *argv[3:]]}
+
+
+def parse_zcode_output(stdout: str) -> dict:
+    payload = json.loads(stdout)
+    if not isinstance(payload, dict) or "response" not in payload or "sessionId" not in payload:
+        raise ValueError("Unexpected zcode output")
+    usage = payload.get("usage") or {}
+    for key in ("inputTokens", "outputTokens"):
+        if not isinstance(usage.get(key), int) or usage[key] < 0:
+            raise ValueError(f"Missing usage: {key}")
+    if usage.get("webFetchRequests") or usage.get("webSearchRequests"):
+        raise ValueError("Judge used web tools")
+    vote = json.loads(_strip_fences(payload["response"]))
+    if not isinstance(vote, dict):
+        raise ValueError("Response is not a JSON object")
+    return {**vote, "usage": usage, "session_id": payload["sessionId"], "tool_calls": 0,
+            "thinking_tokens": usage.get("reasoningTokens")}
+
+
+def zcode_session_identity(db_path: Path, session_id: str, aux_sources) -> dict:
+    """Models that served the session's agent turns, plus any tool usage rows, from ZCode's database."""
+    con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    con.row_factory = sqlite3.Row
+    try:
+        rows = con.execute("select provider_id, model_id, variant, query_source, status from model_usage where session_id = ?",
+                           (session_id,)).fetchall()
+        tools = con.execute("select count(*) from tool_usage where session_id = ?", (session_id,)).fetchone()[0]
+    finally:
+        con.close()
+    turns = [r for r in rows if r["status"] != "cancelled" and (r["query_source"] or "") not in aux_sources]
+    models = sorted({f"{r['provider_id']}/{r['model_id']}" for r in turns})
+    variants = sorted({str(r["variant"]) for r in turns})
+    return {"models": models, "variants": variants, "requests": len(rows), "tool_rows": tools}
+
+
+def cursor_vote(text: str, folder: Path, name: str, settings: dict, schema: dict) -> dict:
+    """Grok through the Cursor CLI: print mode, read-only ask mode, sandbox, prompt on stdin.
+
+    Cursor exposes no system flag and no structured-output flag, and reports
+    the model only as a display name, so identity is requested-only against
+    that name and any tool event rejects the response.
+    """
+    prompt_text = SYSTEM + "\n\n" + text + "\nRequired JSON schema:\n" + base.canonical(schema)
+    (folder / f"{name}.prompt.txt").write_text(prompt_text)
+    env = {k: v for k, v in os.environ.items() if not k.endswith("_API_KEY")}
+    started = time.monotonic()
+    with tempfile.TemporaryDirectory(prefix="vb-cursor-judge-") as scratch:
+        argv = [str(settings["cursor"]), "--print", "--output-format", "stream-json", "--mode", "ask",
+                "--model", settings["model"], "--sandbox", "enabled", "--trust", "--workspace", scratch]
+        proc = subprocess.Popen(argv, cwd=scratch, env=env, text=True, stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+        try:
+            stdout, stderr = proc.communicate(prompt_text, timeout=settings["timeout"])
+        except subprocess.TimeoutExpired:
+            os.killpg(proc.pid, signal.SIGKILL)
+            stdout, stderr = proc.communicate()
+            (folder / f"{name}.stream.jsonl").write_text(stdout)
+            raise RuntimeError("Timeout; no automatic retry") from None
+    (folder / f"{name}.stream.jsonl").write_text(stdout)
+    (folder / f"{name}.stderr.txt").write_text(stderr)
+    if proc.returncode:
+        raise RuntimeError(f"cursor-agent exit {proc.returncode}: {stderr[-300:]}")
+    vote = parse_cursor_stream(stdout)
+    if vote["model_reported"] != settings["display_name"]:
+        raise RuntimeError(f"Judge model changed: {vote['model_reported']}")
+    return {**vote, "judge_model_requested": settings["model"], "judge_effort_requested": settings.get("effort"),
+            "duration_s": time.monotonic() - started, "completed_at": datetime.now(UTC).isoformat(), "argv": argv}
+
+
+def parse_cursor_stream(stream: str) -> dict:
+    events = [json.loads(line) for line in stream.splitlines() if line.strip()]
+    init = [e for e in events if e.get("type") == "system" and e.get("subtype") == "init"]
+    results = [e for e in events if e.get("type") == "result"]
+    if len(init) != 1 or len(results) != 1:
+        raise ValueError("Unexpected session or missing result")
+    if init[0].get("apiKeySource") not in ("login", None):
+        raise RuntimeError("Cursor subscription guard failed")
+    if any(e.get("type") in {"tool_call", "tool_use", "tool_observation"} for e in events):
+        raise ValueError("Judge attempted tool use")
+    result = results[0]
+    if result.get("is_error") or result.get("subtype") != "success":
+        raise ValueError(f"Judge failed: {str(result.get('result'))[:300]}")
+    vote = json.loads(_strip_fences(str(result.get("result") or "")))
+    if not isinstance(vote, dict):
+        raise ValueError("Response is not a JSON object")
+    usage = result.get("usage") or {}
+    for key in ("inputTokens", "outputTokens"):
+        if not isinstance(usage.get(key), int) or usage[key] < 0:
+            raise ValueError(f"Missing usage: {key}")
+    thinking = sum(len(e.get("text", "")) for e in events if e.get("type") == "thinking" and e.get("subtype") == "delta")
+    return {**vote, "usage": usage, "session_id": result.get("session_id"), "tool_calls": 0,
+            "model_reported": init[0].get("model"), "thinking_characters": thinking}
+
+
+def parse_stream_for(panel: str, text: str) -> dict:
+    """Kind-agnostic parse of a saved raw stream for any panel; used by the operator wrapper."""
+    if panel == "astra":
+        return parse_codex_stream(text)
+    if panel == "glm":
+        return parse_zcode_output(text)
+    if panel == "grok":
+        return parse_cursor_stream(text)
+    return parse_claude_stream(text)
+
+
 def parse_codex_stream(stream: str) -> dict:
     """Kind-agnostic Codex stream parse mirroring the v2 checks without a score requirement."""
     events = [json.loads(line) for line in stream.splitlines() if line.strip()]
@@ -579,7 +762,7 @@ RETRYABLE = ("Missing rationale", "Missing dimensions", "Invalid dimension score
              "Empty answer")
 
 
-def call(panel: str, stage: str, name: str, kind: str, payload: dict, protocol: dict) -> dict:  # noqa: PLR0912, PLR0915, receipt-bound retry ladder
+def call(panel: str, stage: str, name: str, kind: str, payload: dict, protocol: dict) -> dict:
     folder = OUT / "calls" / panel / stage / name
     folder.mkdir(parents=True, exist_ok=True)
     text = prompt(kind, payload)
@@ -600,17 +783,15 @@ def call(panel: str, stage: str, name: str, kind: str, payload: dict, protocol: 
             if previous.get("retryable") is True and previous.get("binding") == binding:
                 continue
             raise RuntimeError("Prior non-retryable attempt requires operator review")
-        if panel != "astra" and (OUT / "claude-quota.json").exists() and not quota_ok(read(OUT / "claude-quota.json")):
+        if panel in ("claude", "reader") and (OUT / "claude-quota.json").exists() and not quota_ok(read(OUT / "claude-quota.json")):
             raise RuntimeError("Claude subscription quota guard paused before next call")
         try:
             try:
-                if panel == "astra":
-                    vote = codex_vote(text, folder, attempt_name, settings, KIND_SCHEMA[kind])
-                else:
-                    vote = claude_vote(text, folder, attempt_name, settings, KIND_SCHEMA[kind])
+                transport = {"astra": codex_vote, "glm": zcode_vote, "grok": cursor_vote}.get(panel, claude_vote)
+                vote = transport(text, folder, attempt_name, settings, KIND_SCHEMA[kind])
             finally:
                 stream_path = folder / f"{attempt_name}.stream.jsonl"
-                if panel != "astra" and stream_path.exists():
+                if panel in ("claude", "reader") and stream_path.exists():
                     claude_identity_and_quota(stream_path.read_text(), settings["model"])
             validate(kind, vote, payload)
             if kind == "review":
@@ -705,13 +886,22 @@ def prepare() -> None:
         "quirk_key_hashes": {p.name: sha(p) for p in sorted((OUT / "quirk-keys").glob("*.json"))},
         "ledger_key": LEDGER_KEY,
         "reviewers": {
-            "astra": {"model": "gpt-6-astra", "effort": "medium", "codex": str(v2.CODEX), "timeout": 600},
-            "claude": {"model": "claude-opus-5", "effort": "medium", "claude": str(v2.CLAUDE), "timeout": 600},
-            "reader": {"model": READER_MODEL, "effort": None, "claude": str(v2.CLAUDE), "timeout": 300,
-                       "extended_thinking": False}},
-        "locate_matcher": "claude",
-        "binaries": {str(p): {"sha256": sha(p), "version": subprocess.check_output([str(p), "--version"], text=True).strip()}
-                     for p in (v2.CODEX, v2.CLAUDE)},
+            "glm": {"model": GLM_MODEL, "effort": "high", "zcode": str(ZCODE), "timeout": 900,
+                    "lab": "Z.ai", "prompt_delivery": "argument", "system_prompt": "folded into prompt",
+                    "effort_note": "GLM 5.3 exposes low, high, max only; high is the nearest level to the other "
+                                   "panels' medium and the level that ran is verified from ZCode's usage ledger"},
+            "grok": {"model": GROK_MODEL, "display_name": GROK_DISPLAY, "effort": "medium", "cursor": str(CURSOR),
+                     "timeout": 900, "lab": "xAI", "prompt_delivery": "stdin", "system_prompt": "folded into prompt",
+                     "identity": "requested-only, display name checked"}},
+        "sensitivity_panels": {panel: {"directory": str(SENSITIVITY_OUT), "protocol_sha256": sha(SENSITIVITY_OUT / "protocol.json"),
+                                       "model": read(SENSITIVITY_OUT / "protocol.json")["reviewers"][panel]["model"],
+                                       "role": "disclosed sensitivity panel, outside the composite"}
+                               for panel in SENSITIVITY_PANELS},
+        "shares_evidence_with": {"protocol_sha256": sha(SENSITIVITY_OUT / "protocol.json"),
+                                 "manifest_sha256": sha(SENSITIVITY_OUT / "private-manifest.json")},
+        "locate_matcher": None,
+        "reader": "dropped in v3.3 after failing gate 17 under v3.2; not part of this protocol",
+        "binaries": {str(p): {"sha256": sha(p), "version": _version(p)} for p in (ZCODE, CURSOR)},
         "planned_calls": {"calibration_per_panel": 80, "reader_calibration": 20, "primary_per_panel": 460,
                           "diagnostics_per_panel": 40, "probe_and_match_per_panel": 460,
                           "reader_reads": 230 * REPEATS, "locate_matches": 230 * REPEATS},
@@ -722,6 +912,8 @@ def prepare() -> None:
                                      "fallback_without_l3": {"l1_reviewed": 0.24, "l2_intent": 0.09}}},
         "invalid_response_retries": 1,
     }
+    if sha(OUT / "private-manifest.json") != sha(SENSITIVITY_OUT / "private-manifest.json"):
+        raise ValueError("v3.3 evidence must be byte-identical to the v3.2 sensitivity panels' evidence")
     freeze(OUT / "protocol.json", protocol)
     sizes = [len(prompt("review", read(OUT / "evidence" / f'{r["id"]}.json'))) for r in manifest]
     result = {"submissions": len(manifest), "cells": {f"{m}/{e}": n for (m, e), n in counts.items()},
@@ -730,6 +922,11 @@ def prepare() -> None:
               "protocol_sha256": sha(OUT / "protocol.json")}
     freeze(OUT / "preflight.json", result)
     print(base.canonical(result), flush=True)
+
+
+def _version(binary: Path) -> str:
+    env = dict(os.environ, PATH=f"{NODE24_BIN}:{os.environ.get('PATH', '')}")
+    return subprocess.check_output([str(binary), "--version"], text=True, env=env, stderr=subprocess.STDOUT).strip()
 
 
 def _signals(code: str) -> dict:
@@ -749,6 +946,9 @@ def verify_frozen() -> dict:  # noqa: PLR0912, one check per frozen artifact
     for path, info in protocol["binaries"].items():
         if sha(Path(path)) != info["sha256"]:
             raise ValueError("Frozen CLI changed")
+    for panel, info in protocol.get("sensitivity_panels", {}).items():
+        if sha(Path(info["directory"]) / "protocol.json") != info["protocol_sha256"]:
+            raise ValueError(f"Sensitivity panel protocol changed: {panel}")
     for path, key in [(DOC, "protocol_document_sha256"), (COMPARISON, "source_comparison_sha256"),
                       (OUT / "private-manifest.json", "manifest_sha256"), (OUT / "signals.json", "signals_sha256"),
                       (OUT / "diagnostic-selection.json", "selection_sha256"),
@@ -967,8 +1167,8 @@ def run_reads(protocol: dict) -> None:
 
 # --- summary ------------------------------------------------------------------
 
-def _selected(panel: str, stage: str, name: str) -> dict | None:
-    path = OUT / "calls" / panel / stage / name / "selected.json"
+def _selected(panel: str, stage: str, name: str, root: Path | None = None) -> dict | None:
+    path = (root or OUT) / "calls" / panel / stage / name / "selected.json"
     return read(path) if path.exists() else None
 
 
@@ -986,35 +1186,18 @@ def summarize() -> dict:
     manifest = read(OUT / "private-manifest.json")
     passing = [p for p in PANELS if panel_passed(p)]
     failed = [p for p in PANELS if p not in passing]
-    reader_ok = panel_passed("reader")
+    sensitivity_ok = {p: _sensitivity_passed(p) for p in SENSITIVITY_PANELS}
     rows = []
     for row in manifest:
         key = load_key(row["task"])
         passed = set(row["passed_families"])
         entry = {"id": row["id"], "model": row["model"], "effort": row["effort"], "task": row["task"],
-                 "fallback": row.get("fallback"), "panels": {}, "reader": None}
+                 "fallback": row.get("fallback"), "panels": {}, "sensitivity": {}}
         for panel in PANELS:
-            review = _selected(panel, "primary", row["id"])
-            match = _selected(panel, "match", row["id"])
-            entry["panels"][panel] = {
-                "l1": {k: review[k] for k in ("readability", "maintainability", "score")} if review else None,
-                "l2": l2_score(match, key, passed) if match else None,
-                "l2_denominator": len([q for q in key["quirks"] if set(q["families"]) & passed]),
-            }
-        if reader_ok:
-            reads = [_selected("reader", "read", f'{row["id"]}-r{r + 1}') for r in range(REPEATS)]
-            if all(reads):
-                by_id = {q["id"]: q for q in key["reader_questions"]}
-                scores = []
-                for r, vote in enumerate(reads):
-                    for a in vote["answers"]:
-                        q = by_id[a["id"]]
-                        if q["type"] == "behavioural":
-                            scores.append(check_answer(q, a["answer"]))
-                        else:
-                            locate = _selected(protocol["locate_matcher"], "locate", f'{row["id"]}-r{r + 1}-{q["id"]}')
-                            scores.append(bool(locate) and locate["matches"][0]["status"] == "recovered")
-                entry["reader"] = 100 * statistics.mean(scores)
+            entry["panels"][panel] = _panel_entry(panel, row, key, passed, OUT)
+        for panel in SENSITIVITY_PANELS:
+            if sensitivity_ok[panel]:
+                entry["sensitivity"][panel] = _panel_entry(panel, row, key, passed, SENSITIVITY_OUT)
         published = [entry["panels"][p] for p in passing if entry["panels"][p]["l1"] is not None]
         if published and all(p["l2"] is not None or p["l2_denominator"] == 0 for p in published):
             l1 = statistics.mean(p["l1"]["score"] for p in published)
@@ -1038,17 +1221,66 @@ def summarize() -> dict:
             "l2": _stats([r["published"]["l2"] for r in items if r["published"]["l2"] is not None]),
             "code_quality": _stats([r["published"]["code_quality"] for r in items]),
             "composite_v3": _stats([r["published"]["composite_v3"] for r in items]),
-            "reader": _stats([r["reader"] for r in items if r["reader"] is not None]),
             "l2_redistributed": sum(r["published"]["l2_redistributed"] for r in items),
+            "by_panel": {p: _stats([r["panels"][p]["l1"]["score"] for r in items if r["panels"][p]["l1"]]) for p in PANELS},
+            "sensitivity": {p: _stats([r["sensitivity"][p]["l1"]["score"] for r in items
+                                       if p in r["sensitivity"] and r["sensitivity"][p]["l1"]]) for p in SENSITIVITY_PANELS},
         }
     result = {"protocol": PROTOCOL_ID, "human_calibrated": False, "humans_involved": False,
               "generated_at": datetime.now(UTC).isoformat(), "passing_panels": passing, "failed_panels": failed,
-              "reader_passed": reader_ok, "expected_submissions": len(manifest), "published_submissions": len(complete),
+              "sensitivity_panels_calibrated": sensitivity_ok,
+              "expected_submissions": len(manifest), "published_submissions": len(complete),
               "l3_measured_maintenance": "not run; fallback split 24/9 in force",
+              "self_preference": _self_preference(rows, passing),
+              "fallback_reviews": _fallback_counts(rows),
               "ready_for_publication": bool(passing) and len(complete) == len(manifest),
               "groups": groups, "rows": rows}
     base.save(OUT / "summary.json", result)
     return result
+
+
+def _panel_entry(panel: str, row: dict, key: dict, passed: set[str], root: Path) -> dict:
+    review = _selected(panel, "primary", row["id"], root)
+    match = _selected(panel, "match", row["id"], root)
+    return {"l1": {k: review[k] for k in ("readability", "maintainability", "score")} if review else None,
+            "l2": l2_score(match, key, passed) if match else None,
+            "l2_denominator": len([q for q in key["quirks"] if set(q["families"]) & passed]),
+            "reviewer_fallback": bool(review and review.get("reviewer_fallback"))}
+
+
+def _sensitivity_passed(panel: str) -> bool:
+    path = SENSITIVITY_OUT / f"calibration-{panel}.json"
+    if not path.exists():
+        return False
+    gate = read(path)
+    return bool(gate["passed"]) and gate["protocol_sha256"] == sha(SENSITIVITY_OUT / "protocol.json")
+
+
+def _self_preference(rows: list[dict], passing: list[str]) -> dict:
+    """Per sensitivity panel: mean (panel minus neutral) on its own family's code versus the other's."""
+    family = {"astra": "astra", "claude": "fable"}
+    out = {}
+    for panel in SENSITIVITY_PANELS:
+        gaps = {"own": [], "other": []}
+        for r in rows:
+            sens = r["sensitivity"].get(panel)
+            neutral = [r["panels"][p]["l1"]["score"] for p in passing if r["panels"][p]["l1"]]
+            if not sens or not sens["l1"] or not neutral:
+                continue
+            gap = sens["l1"]["score"] - statistics.mean(neutral)
+            gaps["own" if r["model"] == family[panel] else "other"].append(gap)
+        out[panel] = {"own_family_gap": _stats(gaps["own"]), "other_family_gap": _stats(gaps["other"]),
+                      "self_preference_estimate": (statistics.mean(gaps["own"]) - statistics.mean(gaps["other"]))
+                      if gaps["own"] and gaps["other"] else None}
+    return out
+
+
+def _fallback_counts(rows: list[dict]) -> dict:
+    counts = {}
+    for r in rows:
+        for panel, entry in list(r["panels"].items()) + list(r["sensitivity"].items()):
+            counts[panel] = counts.get(panel, 0) + int(entry.get("reviewer_fallback", False))
+    return counts
 
 
 def _composite(row: dict, code_quality: float, weight: float) -> float:

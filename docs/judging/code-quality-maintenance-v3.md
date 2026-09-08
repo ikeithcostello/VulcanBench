@@ -450,7 +450,38 @@ every gate. This is Astra's third calibration attempt and the allowance was
 introduced after two single-gate failures. Both facts appear on the card.
 Freeze 3 and v3.1 results stay published in full.
 
+## Amendment v3.3, September 8, 2026: a neutral scored panel
+
+Decided by the benchmark owner after the v3.2 calibration, on the objection
+that Astra was both a solver and a judge while Fable 5.1 was judged only by
+a relative. Protocol id becomes `code-quality-maintenance-v3.3`; run
+directory `runs-code-quality-maintenance-v3.3`.
+
+- Scored panel: GLM 5.3 (Z.ai, through the ZCode CLI at reasoning level
+  high, the nearest available to the other panels' medium, verified from
+  ZCode's usage ledger per call) and Grok 4.6 (xAI, through the Cursor CLI
+  at medium, identity requested-only against the CLI's display name). Equal
+  weight. Neither lab has a model on the board being compared.
+- Astra and Claude Opus 5 become disclosed sensitivity panels. Their v3.2
+  run continues unchanged in its own directory under its own frozen
+  protocol; nothing is copied or rebound. The v3.3 summary reads their
+  receipts and publishes, per panel, the gap against the neutral panel on
+  the panel's own family's code versus the other family's code, as a
+  self-preference estimate.
+- Both new judges take the identical calibration exam under v3.2's gates,
+  repeats, and allowance. A judge that fails is published as failed and the
+  single-panel rule applies.
+- Evidence, controls, quirk keys, seeds, weights, rubric, and gates are
+  byte-identical to v3.2, and `prepare` refuses to freeze unless the v3.3
+  manifest hash equals v3.2's.
+- The constrained reader is dropped from v3.3 after failing gate 17.
+- Both new CLIs lack a system-prompt flag, so the reviewer system text is
+  folded into the prompt. Neither exposes a structured-output flag; the
+  narrow fence normalizer applies. Match responses that decorate a quirk id
+  ("Q1: ...") are normalized to the id, deterministically, before
+  validation.
+
 ## Not yet done
 
-- v3.2 calibration results and every later stage.
+- v3.3 calibration results for GLM 5.3 and Grok 4.6 and every later stage.
 - L3 follow-up change generation, per task, and its worker runner.

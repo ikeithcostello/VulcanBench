@@ -59,6 +59,9 @@ def test_probe_match_and_reader_validation():
         v3.validate("probe", {"rationale": "x", "departures": [{"condition": "c", "effect": "e", "excerpt": "zzz"}]}, evidence)
     payload = {"key": v3.LEDGER_KEY["quirks"], "departures": probe["departures"]}
     v3.validate("match", {"rationale": "r", "matches": [{"quirk": "Q1", "status": "recovered", "departure": 0, "reason": "same"}]}, payload)
+    decorated = {"rationale": "r", "matches": [{"quirk": "Q1: render is given _suspense", "status": "recovered", "departure": 0, "reason": "same"}]}
+    v3.validate("match", decorated, payload)
+    assert decorated["matches"][0]["quirk"] == "Q1"
     with pytest.raises(ValueError, match="cite a listed departure"):
         v3.validate("match", {"rationale": "r", "matches": [{"quirk": "Q1", "status": "partial", "departure": 3, "reason": "x"}]}, payload)
     with pytest.raises(ValueError, match="cannot cite"):
@@ -221,3 +224,35 @@ def test_fence_normalizer_is_narrow():
     assert v3._strip_fences('```json\n{"a": 1}\n```') == '{"a": 1}'
     assert v3._strip_fences('{"a": 1}') == '{"a": 1}'
     assert v3._strip_fences('text ```json {"a": 1} ```') == 'text ```json {"a": 1} ```'
+
+
+def test_zcode_output_parse_rejects_web_use_and_unwraps_fences():
+    out = {"sessionId": "sess_1", "response": '```json\n{"departures": [], "rationale": "none"}\n```',
+           "usage": {"inputTokens": 5, "outputTokens": 2, "reasoningTokens": 0, "webFetchRequests": 0, "webSearchRequests": 0}}
+    vote = v3.parse_zcode_output(json.dumps(out))
+    assert vote["departures"] == [] and vote["session_id"] == "sess_1"
+    out["usage"]["webSearchRequests"] = 1
+    with pytest.raises(ValueError, match="web tools"):
+        v3.parse_zcode_output(json.dumps(out))
+
+
+def cursor_stream(result='{"answers": [{"id": "R1", "answer": "5"}]}', extra=(), api="login"):
+    events = [{"type": "system", "subtype": "init", "model": "Cursor Grok 4.6 Medium", "apiKeySource": api},
+              *extra,
+              {"type": "result", "subtype": "success", "is_error": False, "result": result, "session_id": "c1",
+               "usage": {"inputTokens": 9, "outputTokens": 3}}]
+    return "\n".join(json.dumps(e) for e in events)
+
+
+def test_cursor_stream_parse_checks_tools_and_subscription():
+    vote = v3.parse_cursor_stream(cursor_stream())
+    assert vote["answers"][0]["answer"] == "5" and vote["model_reported"] == "Cursor Grok 4.6 Medium"
+    with pytest.raises(ValueError, match="tool use"):
+        v3.parse_cursor_stream(cursor_stream(extra=[{"type": "tool_call", "subtype": "started"}]))
+    with pytest.raises(RuntimeError, match="subscription"):
+        v3.parse_cursor_stream(cursor_stream(api="apiKey"))
+
+
+def test_v33_roster():
+    assert v3.PANELS == ("glm", "grok") and v3.SENSITIVITY_PANELS == ("astra", "claude")
+    assert v3.PROTOCOL_ID == "code-quality-maintenance-v3.3"

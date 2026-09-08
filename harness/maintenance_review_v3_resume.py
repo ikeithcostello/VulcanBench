@@ -73,7 +73,7 @@ def assistant_models(stream_text: str) -> set[str]:
 
 
 def accept_fallback(folder: Path, panel: str, stage: str) -> bool:
-    if panel == "astra":
+    if panel != "claude":
         return False
     kind = stage_kind(stage)
     payload = payload_for(stage, folder.name)
@@ -167,8 +167,9 @@ def recover_excerpts(folder: Path, panel: str, stage: str) -> bool:  # noqa: PLR
     if evidence is None:
         return False
     source = list(v3.strings(evidence))
-    vote = v3.parse_claude_stream(stream.read_text()) if panel != "astra" else None
-    if vote is None:
+    try:
+        vote = v3.parse_stream_for(panel, stream.read_text())
+    except (ValueError, json.JSONDecodeError, KeyError):
         return False
     recovered = {}
     for dim, detail in vote["dimensions"].items():
@@ -198,7 +199,7 @@ def newest_unresolved(panel: str) -> Path | None:
 
 
 def apply_rule(folder: Path) -> bool:
-    if (folder / "attempt-2.json").exists():
+    if folder.parent.parent.name not in ("claude", "reader") or (folder / "attempt-2.json").exists():
         return False
     receipt = json.loads((folder / "attempt-1.json").read_text())
     if receipt.get("status") != "failed" or receipt.get("retryable") is not False:
