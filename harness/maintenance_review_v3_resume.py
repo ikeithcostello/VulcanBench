@@ -205,6 +205,39 @@ def rewrap_excerpt(excerpt: str, source: list[str]) -> str | None:
 _TOKEN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*|\d+|\"[^\"]*\"|'[^']*'|==|!=|<=|>=|\+=|-=|\*=|//=|//|\*\*|[^\s\w]")
 
 
+def _span_anywhere(fragment: str, source: list[str]) -> str | None:
+    """Verbatim lines covering a fragment that starts or ends mid-line across wrapped text.
+
+    Finds a word-aligned suffix of some source line that the collapsed
+    fragment begins with, accumulates following lines until the fragment is
+    covered, and returns those whole lines. Used for hard-wrapped prose such
+    as docstrings and README paragraphs. Shorter than 20 characters is refused.
+    """
+    target = _collapse(fragment)
+    if len(target) < 20:
+        return None
+    for text in sorted(source, key=lambda s: s.startswith("diff --git")):
+        lines = text.splitlines()
+        collapsed = [_collapse(line) for line in lines]
+        for i, first in enumerate(collapsed):
+            if not first:
+                continue
+            words = first.split(" ")
+            for k in range(len(words)):
+                suffix = " ".join(words[k:])
+                if not target.startswith(suffix):
+                    continue
+                accum, j = suffix, i
+                while len(accum) < len(target) and j + 1 < len(lines) and j - i < 40:
+                    j += 1
+                    accum = _collapse(accum + " " + collapsed[j]) if collapsed[j] else accum
+                if accum.startswith(target):
+                    span = "\n".join(lines[i:j + 1])
+                    return span if v3.excerpt_supported(span, source) else None
+                break
+    return None
+
+
 def _omission_only_line(fragment: str, source: list[str]) -> str | None:
     """A single source line whose tokens contain the fragment's tokens in order, with nothing added.
 
@@ -254,7 +287,7 @@ def _rewrap_fragment(excerpt: str, source: list[str]) -> str | None:
                     return span if v3.excerpt_supported(span, source) else None
                 if not target.startswith(joined):
                     break
-    return _omission_only_line(excerpt, source)
+    return _span_anywhere(excerpt, source) or _omission_only_line(excerpt, source)
 
 
 def recover_excerpts(folder: Path, panel: str, stage: str) -> bool:  # noqa: PLR0911, PLR0912, one branch per precondition and attempt

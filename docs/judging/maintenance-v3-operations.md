@@ -150,3 +150,9 @@ operational notes live here.
 - Cursor leaves one detached helper process per call (parent pid 1); they
   are idle and do not hold the runner. Grok's effective pace is about two
   minutes per review including CLI start-up.
+- Grok, primary 140: both attempts quoted hard-wrapped documentation prose
+  verbatim, but the quotes began and ended mid-line, which the span matcher
+  did not accept. Recovery generalized: a fragment may start at a
+  word-aligned point inside a source line and span following lines; the
+  whole verbatim lines are selected and the original recorded. Fabricated
+  text still fails; both GLM cases were re-checked.
