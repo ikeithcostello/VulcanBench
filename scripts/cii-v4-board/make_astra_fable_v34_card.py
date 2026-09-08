@@ -101,8 +101,9 @@ def load():
             "readability": statistics.mean(entry["panels"][p]["l1"]["readability"] for p in PANELS),
             "maintainability": statistics.mean(entry["panels"][p]["l1"]["maintainability"] for p in PANELS),
             "by_panel": {p: entry["panels"][p]["l1"]["score"] for p in PANELS},
+            # Intent recovery is shown only once it is scored, i.e. both panels' probes are complete for the row.
             "l2": statistics.mean([entry["panels"][p]["l2"] for p in PANELS if entry["panels"][p]["l2"] is not None])
-            if any(entry["panels"][p]["l2"] is not None for p in PANELS) else None,
+            if layers == "l1+l2" else None,
             "combined_v3": composite(run, cq, WEIGHTS_V3["human_like"]),
             "combined_20pct": composite(run, cq, 0.20),
         })
@@ -217,8 +218,9 @@ def main():  # noqa: PLR0915, one linear figure
                     color=COLORS[model], markeredgecolor=INK, markeredgewidth=.7, markersize=8, ecolor=INK, elinewidth=1.5, capsize=5)
         text(x, .430, "CODE QUALITY /100", 13, True)
         text(x, .390, f"{fmt(g['code_quality'])} ± {g['code_quality']['se']:.2f}", 30, True, numeric=True)
+        intent = fmt(g["l2"], 1) if g["l2"]["mean"] is not None else "pending"
         text(x, .352, f"Readability {fmt(g['readability'], 1)}  ·  Maintainability {fmt(g['maintainability'], 1)}  ·  "
-                      f"Intent recovery {fmt(g['l2'], 1)}", 13)
+                      f"Intent recovery {intent}", 13)
         text(x, .325, "  ·  ".join(f"{PANEL_NAMES[p].split(' (')[0]} {fmt(g['by_panel'][p], 1)}" for p in PANELS), 13, color=MUTED)
         text(x, .286, "MEAN RUNTIME / TASK", 13, True)
         text(x, .250, f"{fmt(g['minutes'])} min", 26, True, numeric=True)
