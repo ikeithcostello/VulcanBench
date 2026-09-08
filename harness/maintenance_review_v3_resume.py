@@ -52,6 +52,10 @@ def payload_for(stage: str, ident: str) -> dict | None:
     """Rebuild the frozen payload for a call so a recovered response can be validated."""
     if stage in ("primary", "repeat"):
         return v3.read(OUT / "evidence" / f"{ident}.json")
+    if stage == "calibration":
+        if ident.startswith("control-"):
+            return v3.read(OUT / "controls" / f"control-{ident.split('-')[1]}.json")
+        return None
     if stage == "pairwise":
         a, b = ident.split("-submission-")
         b = "submission-" + b

@@ -40,6 +40,10 @@ def test_review_validation_requires_six_supported_dimensions():
         v3.validate("review", review_vote(3, excerpt="def balances(records):\n    ...\n    raise ValueError(...)"), evidence)
     with pytest.raises(ValueError, match="Unsupported evidence excerpt"):
         v3.validate("review", review_vote(3, excerpt="..."), evidence)
+    # v3.3: inline ellipsis joins verbatim fragments on one line
+    v3.validate("review", review_vote(3, excerpt="def parse_records(text): ... def render(totals):"), evidence)
+    with pytest.raises(ValueError, match="Unsupported evidence excerpt"):
+        v3.validate("review", review_vote(3, excerpt="def parse_records(text): ... def render(nothing):"), evidence)
     with pytest.raises(ValueError, match="Invalid dimension score"):
         v3.validate("review", review_vote(3.25), evidence)
 

@@ -475,6 +475,11 @@ directory `runs-code-quality-maintenance-v3.3`.
   byte-identical to v3.2, and `prepare` refuses to freeze unless the v3.3
   manifest hash equals v3.2's.
 - The constrained reader is dropped from v3.3 after failing gate 17.
+- Excerpt rule: an inline ellipsis inside an excerpt line splits it into
+  fragments that are each checked verbatim. GLM 5.3 quotes this way in
+  nearly every review; it is a quoting convention, not fabrication, and
+  fabricated fragments still fail. Found on the first GLM calibration call
+  and applied before any counted call.
 - Both new CLIs lack a system-prompt flag, so the reviewer system text is
   folded into the prompt. Neither exposes a structured-output flag; the
   narrow fence normalizer applies. Match responses that decorate a quirk id

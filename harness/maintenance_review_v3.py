@@ -342,14 +342,18 @@ def prompt(kind: str, payload: dict) -> str:
 
 
 def excerpt_supported(excerpt: str, source: list[str]) -> bool:
-    """v3.1 rule: every non-blank excerpt line appears verbatim in the evidence.
+    """Every non-blank excerpt fragment appears verbatim in the evidence.
 
-    Blocks fabricated quotes while tolerating a judge that stitches together
-    lines that are separated by comments in the file.
+    v3.1: lines separated by comments may be stitched. v3.2: a dots-only line
+    marks elided code. v3.3: an inline ellipsis splits a line into fragments
+    that are each checked verbatim. Fabricated text still fails.
     """
-    lines = [line.strip() for line in excerpt.splitlines() if line.strip()]
-    lines = [line for line in lines if not _is_elision(line)]
-    return bool(lines) and all(any(line in s for s in source) for line in lines)
+    fragments = [f.strip() for line in excerpt.splitlines() for f in _ELLIPSIS.split(line) if f.strip()]
+    fragments = [f for f in fragments if not _is_elision(f)]
+    return bool(fragments) and all(any(f in s for s in source) for f in fragments)
+
+
+_ELLIPSIS = re.compile(r"\s*(?:\.\.\.|\u2026)\s*")
 
 
 def _is_elision(line: str) -> bool:
