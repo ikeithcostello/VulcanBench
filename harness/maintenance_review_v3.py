@@ -12,6 +12,11 @@ v3.3 (September 8, 2026): the scored panel is GLM 5.3 (ZCode CLI) and Grok
 run under v3.2 in its own directory, become disclosed sensitivity panels
 read by summarize; their receipts are never copied or rebound.
 
+v3.4 (September 8, 2026): GLM 5.3 failed calibration on validity. Muse
+Spark 1.3 (Meta, Muse CLI, Standard tier, no training on prompts) replaces
+it and runs here; Grok 4.6 continues under v3.3 in its own directory as a
+scored sibling panel read by summarize with equal weight.
+
 Stages, all resumable from saved receipts and bound to the frozen protocol:
 
     prepare                     freeze evidence, controls, keys, order, protocol
@@ -43,6 +48,7 @@ import statistics
 import subprocess
 import tempfile
 import time
+import uuid
 from collections import Counter
 from contextlib import contextmanager
 from datetime import UTC, datetime
@@ -51,6 +57,7 @@ from pathlib import Path
 from harness import claude_retrospective as claude
 from harness import maintenance_review_v2 as v2
 from harness import retrospective_judging as base
+from harness.agent import muse_code
 from harness.agent.cli_agents import (
     _ZCODE_AUX_QUERY_SOURCES,
     _read_json_file,
@@ -62,14 +69,15 @@ from harness.claude_review_guard import quota_ok
 from harness.evaluator.readability_signals import analyze_source
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "runs-code-quality-maintenance-v3.3"
+OUT = ROOT / "runs-code-quality-maintenance-v3.4"
+SCORED_SIBLING_OUT = {"grok": ROOT / "runs-code-quality-maintenance-v3.3"}
 SENSITIVITY_OUT = ROOT / "runs-code-quality-maintenance-v3.2"
 DOC = ROOT / "docs/judging/code-quality-maintenance-v3.md"
 COMPARISON = v2.COMPARISON
 TASKS = v2.TASKS
 CONTROLS_DIR = ROOT / "docs/judging/controls-v3"
 KEYS_DIR = ROOT / "docs/judging/quirk-keys-v3"
-PROTOCOL_ID = "code-quality-maintenance-v3.3"
+PROTOCOL_ID = "code-quality-maintenance-v3.4"
 SEED = 20260907
 READER_MODEL = "claude-haiku-4-5-20251001"
 STRUCTURED_OUTPUT_TOOL = "StructuredOutput"
@@ -77,7 +85,8 @@ STRUCTURED_OUTPUT_TOOL = "StructuredOutput"
 READABILITY = ("naming", "presentation", "intent")
 MAINTAINABILITY = ("structure", "changeability", "verifiability")
 DIMENSIONS = READABILITY + MAINTAINABILITY
-PANELS = ("glm", "grok")
+PANELS = ("muse",)
+SCORED_PANELS = (*PANELS, *SCORED_SIBLING_OUT)
 SENSITIVITY_PANELS = ("astra", "claude")
 ZCODE = Path.home() / ".nvm/versions/node/v24.16.0/bin/zcode"
 NODE24_BIN = Path.home() / ".nvm/versions/node/v24.16.0/bin"
@@ -85,6 +94,16 @@ CURSOR = Path.home() / ".local/bin/cursor-agent"
 GLM_MODEL = "zai/glm-5.3"
 GROK_MODEL = "cursor-grok-4.6-medium"
 GROK_DISPLAY = "Cursor Grok 4.6 Medium"
+MUSE_MODEL = "muse-spark-1.3"
+MUSE_BINARY = Path.home() / ".local/bin/muse-bin-1.0.3-R2198.1"
+MUSE_SHA256 = "4c0f960028b603174af7df7bd5051d8c35d6c1aa372a37d18bc770926a0577a7"
+
+
+def _pin_muse() -> tuple[Path, str]:
+    """Point the adapter's pinned-binary check at the frozen Muse binary and hash."""
+    os.environ.setdefault("VULCANBENCH_MUSE_BINARY", str(MUSE_BINARY))
+    os.environ.setdefault("VULCANBENCH_MUSE_SHA256", MUSE_SHA256)
+    return muse_code.pinned_executable()
 ZCODE_DENIED_TOOLS = ("Bash", "Edit", "Write", "MultiEdit", "NotebookEdit", "Read", "Glob", "Grep", "LS",
                       "WebFetch", "WebSearch", "web_search", "Task", "TodoWrite", "AskUserQuestion")
 REPEATS = 5
@@ -685,6 +704,84 @@ def parse_cursor_stream(stream: str) -> dict:
             "model_reported": init[0].get("model"), "thinking_characters": thinking}
 
 
+def muse_vote(text: str, folder: Path, name: str, settings: dict, schema: dict) -> dict:
+    """Muse Spark through the Muse CLI, Standard tier: headless exec inside the adapter's OS sandbox.
+
+    No system-prompt flag, so the system text is folded into the prompt. The
+    workspace is an empty scratch directory and the kernel sandbox denies
+    every tool side effect. Identity and usage come from the session logs the
+    adapter already audits; any tool event in the stream rejects the response.
+    """
+    prompt_text = SYSTEM + "\n\n" + text + "\nRequired JSON schema:\n" + base.canonical(schema)
+    (folder / f"{name}.prompt.txt").write_text(prompt_text)
+    executable, binary_sha256 = _pin_muse()
+    started = time.monotonic()
+    with tempfile.TemporaryDirectory(prefix="vb-muse-judge-") as scratch_dir:
+        scratch = Path(scratch_dir).resolve()
+        (scratch / "tmp").mkdir()
+        workspace = scratch / "workspace"
+        workspace.mkdir()
+        (scratch / "prompt.txt").write_text(prompt_text)
+        env = muse_code._subscription_env()
+        env.update(XDG_DATA_HOME=str(scratch / "data"), MUSE_NO_AUTO_UPDATE="1",
+                   TMPDIR=str(scratch / "tmp"), TMP=str(scratch / "tmp"), TEMP=str(scratch / "tmp"))
+        profile_path = scratch / "boundary.sb"
+        profile_path.write_text(muse_code.boundary_profile(workspace, scratch))
+        session_id = str(uuid.uuid4())
+        argv = ["/usr/bin/sandbox-exec", "-f", str(profile_path), str(executable), "exec", "--json",
+                "--prompt-file", str(scratch / "prompt.txt"), "--model", settings["model"],
+                "--reasoning-effort", settings["effort"], "--workspace", str(workspace),
+                "--session-id", session_id, "--disable-approval", "--disable-sandbox",
+                "--no-foreign-personal-context", "--max-model-steps", "2", "--disable-web-tools"]
+        proc = subprocess.Popen(argv, cwd=workspace, env=env, text=True, stdin=subprocess.DEVNULL,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+        try:
+            stdout, stderr = proc.communicate(timeout=settings["timeout"])
+        except subprocess.TimeoutExpired:
+            os.killpg(proc.pid, signal.SIGKILL)
+            stdout, stderr = proc.communicate()
+            (folder / f"{name}.stream.jsonl").write_text(stdout)
+            raise RuntimeError("Timeout; no automatic retry") from None
+        (folder / f"{name}.stream.jsonl").write_text(stdout)
+        (folder / f"{name}.stderr.txt").write_text(stderr)
+        logs = sorted((scratch / "data/muse/sessions").rglob("session.jsonl"))
+        archive = folder / f"{name}.muse-session-logs"
+        for path in logs:
+            target = archive / path.relative_to(scratch / "data/muse/sessions")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(path.read_bytes())
+        if proc.returncode:
+            raise RuntimeError(f"muse exit {proc.returncode}: {stderr[-300:]}")
+        vote = parse_muse_stream(stdout)
+        usage = muse_code.collect_usage(logs, settings["model"])  # raises on any model mismatch
+    if usage["calls"] < 1:
+        raise RuntimeError("Muse session recorded no completed model call")
+    if vote["model_reported"] != settings["model"]:
+        raise RuntimeError(f"Judge model changed: {vote['model_reported']}")
+    return {**vote, "usage": usage, "session_id": session_id, "binary_sha256": binary_sha256,
+            "judge_model_requested": settings["model"], "judge_effort_requested": settings["effort"],
+            "duration_s": time.monotonic() - started, "completed_at": datetime.now(UTC).isoformat(),
+            "argv": [*argv[:6], "<prompt file>", *argv[7:]]}
+
+
+def parse_muse_stream(stream: str) -> dict:
+    events = [json.loads(line) for line in stream.splitlines() if line.strip()]
+    configured = [e for e in events if e.get("payload_type") == "run.model.configured"]
+    terminal = [e for e in events if e.get("payload_type") == "run.terminal.completed"]
+    if len(configured) != 1 or len(terminal) != 1:
+        raise ValueError("Unexpected session: model configuration or terminal event missing")
+    if any("tool" in str(e.get("payload_type")) for e in events):
+        raise ValueError("Judge attempted tool use")
+    payload = terminal[0].get("payload") or {}
+    if payload.get("terminal") != "completed":
+        raise ValueError(f"Judge failed: {payload.get('terminal')} {payload.get('reason')}")
+    vote = json.loads(_strip_fences(str(payload.get("text") or "")))
+    if not isinstance(vote, dict):
+        raise ValueError("Response is not a JSON object")
+    return {**vote, "tool_calls": 0, "model_reported": (configured[0].get("payload") or {}).get("model_id"),
+            "provider_reported": (configured[0].get("payload") or {}).get("provider_id")}
+
+
 def parse_stream_for(panel: str, text: str) -> dict:
     """Kind-agnostic parse of a saved raw stream for any panel; used by the operator wrapper."""
     if panel == "astra":
@@ -693,6 +790,8 @@ def parse_stream_for(panel: str, text: str) -> dict:
         return parse_zcode_output(text)
     if panel == "grok":
         return parse_cursor_stream(text)
+    if panel == "muse":
+        return parse_muse_stream(text)
     return parse_claude_stream(text)
 
 
@@ -793,7 +892,7 @@ def call(panel: str, stage: str, name: str, kind: str, payload: dict, protocol: 
             raise RuntimeError("Claude subscription quota guard paused before next call")
         try:
             try:
-                transport = {"astra": codex_vote, "glm": zcode_vote, "grok": cursor_vote}.get(panel, claude_vote)
+                transport = {"astra": codex_vote, "glm": zcode_vote, "grok": cursor_vote, "muse": muse_vote}.get(panel, claude_vote)
                 vote = transport(text, folder, attempt_name, settings, KIND_SCHEMA[kind])
             finally:
                 stream_path = folder / f"{attempt_name}.stream.jsonl"
@@ -892,13 +991,15 @@ def prepare() -> None:
         "quirk_key_hashes": {p.name: sha(p) for p in sorted((OUT / "quirk-keys").glob("*.json"))},
         "ledger_key": LEDGER_KEY,
         "reviewers": {
-            "glm": {"model": GLM_MODEL, "effort": "high", "zcode": str(ZCODE), "timeout": 900,
-                    "lab": "Z.ai", "prompt_delivery": "argument", "system_prompt": "folded into prompt",
-                    "effort_note": "GLM 5.3 exposes low, high, max only; high is the nearest level to the other "
-                                   "panels' medium and the level that ran is verified from ZCode's usage ledger"},
-            "grok": {"model": GROK_MODEL, "display_name": GROK_DISPLAY, "effort": "medium", "cursor": str(CURSOR),
-                     "timeout": 900, "lab": "xAI", "prompt_delivery": "stdin", "system_prompt": "folded into prompt",
-                     "identity": "requested-only, display name checked"}},
+            "muse": {"model": MUSE_MODEL, "effort": "medium", "muse": str(_pin_muse()[0]),
+                     "binary_sha256": _pin_muse()[1], "timeout": 900, "lab": "Meta",
+                     "tier": "standard (no training on prompts or completions)", "prompt_delivery": "prompt file",
+                     "system_prompt": "folded into prompt", "sandbox": "adapter kernel profile, empty workspace",
+                     "identity": "session log model_completed events, audited by the adapter's collect_usage"}},
+        "scored_siblings": {panel: {"directory": str(root), "protocol_sha256": sha(root / "protocol.json"),
+                                    "model": read(root / "protocol.json")["reviewers"][panel]["model"],
+                                    "role": "scored panel with equal weight, run under its own frozen protocol"}
+                            for panel, root in SCORED_SIBLING_OUT.items()},
         "sensitivity_panels": {panel: {"directory": str(SENSITIVITY_OUT), "protocol_sha256": sha(SENSITIVITY_OUT / "protocol.json"),
                                        "model": read(SENSITIVITY_OUT / "protocol.json")["reviewers"][panel]["model"],
                                        "role": "disclosed sensitivity panel, outside the composite"}
@@ -907,7 +1008,7 @@ def prepare() -> None:
                                  "manifest_sha256": sha(SENSITIVITY_OUT / "private-manifest.json")},
         "locate_matcher": None,
         "reader": "dropped in v3.3 after failing gate 17 under v3.2; not part of this protocol",
-        "binaries": {str(p): {"sha256": sha(p), "version": _version(p)} for p in (ZCODE, CURSOR)},
+        "binaries": {str(_pin_muse()[0]): {"sha256": _pin_muse()[1]}},
         "planned_calls": {"calibration_per_panel": 80, "reader_calibration": 20, "primary_per_panel": 460,
                           "diagnostics_per_panel": 40, "probe_and_match_per_panel": 460,
                           "reader_reads": 230 * REPEATS, "locate_matches": 230 * REPEATS},
@@ -918,8 +1019,9 @@ def prepare() -> None:
                                      "fallback_without_l3": {"l1_reviewed": 0.24, "l2_intent": 0.09}}},
         "invalid_response_retries": 1,
     }
-    if sha(OUT / "private-manifest.json") != sha(SENSITIVITY_OUT / "private-manifest.json"):
-        raise ValueError("v3.3 evidence must be byte-identical to the v3.2 sensitivity panels' evidence")
+    for root in (SENSITIVITY_OUT, *SCORED_SIBLING_OUT.values()):
+        if sha(OUT / "private-manifest.json") != sha(root / "private-manifest.json"):
+            raise ValueError(f"Evidence must be byte-identical to {root}")
     freeze(OUT / "protocol.json", protocol)
     sizes = [len(prompt("review", read(OUT / "evidence" / f'{r["id"]}.json'))) for r in manifest]
     result = {"submissions": len(manifest), "cells": {f"{m}/{e}": n for (m, e), n in counts.items()},
@@ -952,9 +1054,9 @@ def verify_frozen() -> dict:  # noqa: PLR0912, one check per frozen artifact
     for path, info in protocol["binaries"].items():
         if sha(Path(path)) != info["sha256"]:
             raise ValueError("Frozen CLI changed")
-    for panel, info in protocol.get("sensitivity_panels", {}).items():
+    for panel, info in {**protocol.get("sensitivity_panels", {}), **protocol.get("scored_siblings", {})}.items():
         if sha(Path(info["directory"]) / "protocol.json") != info["protocol_sha256"]:
-            raise ValueError(f"Sensitivity panel protocol changed: {panel}")
+            raise ValueError(f"Companion panel protocol changed: {panel}")
     for path, key in [(DOC, "protocol_document_sha256"), (COMPARISON, "source_comparison_sha256"),
                       (OUT / "private-manifest.json", "manifest_sha256"), (OUT / "signals.json", "signals_sha256"),
                       (OUT / "diagnostic-selection.json", "selection_sha256"),
@@ -1110,12 +1212,17 @@ def calibrate_reader(protocol: dict) -> None:
 
 # --- full pass ----------------------------------------------------------------
 
+def panel_root(panel: str) -> Path:
+    return SCORED_SIBLING_OUT.get(panel, OUT)
+
+
 def panel_passed(panel: str) -> bool:
-    path = OUT / f"calibration-{panel}.json"
+    root = panel_root(panel)
+    path = root / f"calibration-{panel}.json"
     if not path.exists():
         return False
     gate = read(path)
-    return bool(gate["passed"]) and gate["protocol_sha256"] == sha(OUT / "protocol.json")
+    return bool(gate["passed"]) and gate["protocol_sha256"] == sha(root / "protocol.json")
 
 
 def require_passed(panel: str) -> None:
@@ -1190,8 +1297,8 @@ def l2_score(match: dict, key: dict, passed: set[str]) -> float | None:
 def summarize() -> dict:
     protocol = verify_frozen()
     manifest = read(OUT / "private-manifest.json")
-    passing = [p for p in PANELS if panel_passed(p)]
-    failed = [p for p in PANELS if p not in passing]
+    passing = [p for p in SCORED_PANELS if panel_passed(p)]
+    failed = [p for p in SCORED_PANELS if p not in passing]
     sensitivity_ok = {p: _sensitivity_passed(p) for p in SENSITIVITY_PANELS}
     rows = []
     for row in manifest:
@@ -1199,8 +1306,8 @@ def summarize() -> dict:
         passed = set(row["passed_families"])
         entry = {"id": row["id"], "model": row["model"], "effort": row["effort"], "task": row["task"],
                  "fallback": row.get("fallback"), "panels": {}, "sensitivity": {}}
-        for panel in PANELS:
-            entry["panels"][panel] = _panel_entry(panel, row, key, passed, OUT)
+        for panel in SCORED_PANELS:
+            entry["panels"][panel] = _panel_entry(panel, row, key, passed, panel_root(panel))
         for panel in SENSITIVITY_PANELS:
             if sensitivity_ok[panel]:
                 entry["sensitivity"][panel] = _panel_entry(panel, row, key, passed, SENSITIVITY_OUT)
@@ -1228,7 +1335,7 @@ def summarize() -> dict:
             "code_quality": _stats([r["published"]["code_quality"] for r in items]),
             "composite_v3": _stats([r["published"]["composite_v3"] for r in items]),
             "l2_redistributed": sum(r["published"]["l2_redistributed"] for r in items),
-            "by_panel": {p: _stats([r["panels"][p]["l1"]["score"] for r in items if r["panels"][p]["l1"]]) for p in PANELS},
+            "by_panel": {p: _stats([r["panels"][p]["l1"]["score"] for r in items if r["panels"][p]["l1"]]) for p in SCORED_PANELS},
             "sensitivity": {p: _stats([r["sensitivity"][p]["l1"]["score"] for r in items
                                        if p in r["sensitivity"] and r["sensitivity"][p]["l1"]]) for p in SENSITIVITY_PANELS},
         }
@@ -1327,7 +1434,7 @@ def run_stage(panel: str, stage: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("action", choices=("prepare", "calibrate", "run", "probe", "read", "summarize"))
-    parser.add_argument("--panel", choices=(*PANELS, *SENSITIVITY_PANELS, "reader"))
+    parser.add_argument("--panel", choices=(*PANELS, *SENSITIVITY_PANELS, "glm", "grok", "reader"))
     args = parser.parse_args()
     OUT.mkdir(exist_ok=True)
     if args.action == "prepare":

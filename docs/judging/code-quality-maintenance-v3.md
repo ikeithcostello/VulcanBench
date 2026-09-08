@@ -488,7 +488,33 @@ directory `runs-code-quality-maintenance-v3.3`.
   ("Q1: ...") are normalized to the id, deterministically, before
   validation.
 
+## Amendment v3.4, September 8, 2026: Muse Spark 1.3 replaces GLM 5.3
+
+GLM 5.3 failed v3.3 calibration on gate 1: on control 0, repeat 2, both
+attempts contained fabricated excerpts (a constant misquoted, and a
+dictionary that exists in no file). Its receipts are retained and its
+failure is published. The owner selected Muse Spark 1.3 (Meta) as the
+second neutral judge. Protocol id becomes `code-quality-maintenance-v3.4`;
+run directory `runs-code-quality-maintenance-v3.4`.
+
+- Muse Spark 1.3 runs through the Muse CLI on the Standard tier, which does
+  not train on prompts or completions, at medium reasoning effort, inside
+  the adapter's kernel sandbox with an empty workspace, tools denied by the
+  sandbox and by flags. The binary is content-pinned by hash. Model identity
+  and token usage are read from the session log the adapter already audits;
+  any tool event rejects the response.
+- Grok 4.6 continues under v3.3 in its own directory as a scored sibling
+  panel with equal weight; nothing is copied or rebound. The v3.4 summary
+  reads both scored panels and both v3.2 sensitivity panels, and `prepare`
+  refuses to freeze unless every companion directory's evidence manifest is
+  byte-identical.
+- Muse's calibration exam is identical to every other panel's.
+- The Muse subscription is shared with a solver sweep running on the
+  Contributor tier; the judge uses the Standard tier and a separate session
+  store. Contention shows up only as pauses, never as changed results.
+
 ## Not yet done
 
-- v3.3 calibration results for GLM 5.3 and Grok 4.6 and every later stage.
+- v3.4 calibration results for Muse Spark 1.3, v3.3 results for Grok 4.6,
+  and every later stage.
 - L3 follow-up change generation, per task, and its worker runner.

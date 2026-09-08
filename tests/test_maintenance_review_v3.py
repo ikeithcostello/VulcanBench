@@ -261,6 +261,22 @@ def test_cursor_stream_parse_checks_tools_and_subscription():
         v3.parse_cursor_stream(cursor_stream(api="apiKey"))
 
 
-def test_v33_roster():
-    assert v3.PANELS == ("glm", "grok") and v3.SENSITIVITY_PANELS == ("astra", "claude")
-    assert v3.PROTOCOL_ID == "code-quality-maintenance-v3.3"
+def test_v34_roster():
+    assert v3.PANELS == ("muse",) and v3.SCORED_PANELS == ("muse", "grok") and v3.SENSITIVITY_PANELS == ("astra", "claude")
+    assert v3.PROTOCOL_ID == "code-quality-maintenance-v3.4"
+
+
+def muse_stream(text='{"answers": [{"id": "R1", "answer": "5"}]}', extra=(), terminal="completed"):
+    events = [{"payload_type": "run.model.configured", "payload": {"provider_id": "meta", "model_id": "muse-spark-1.3"}},
+              *extra,
+              {"payload_type": "run.terminal.completed", "payload": {"terminal": terminal, "text": text, "reason": None}}]
+    return "\n".join(json.dumps(e) for e in events)
+
+
+def test_muse_stream_parse():
+    vote = v3.parse_muse_stream(muse_stream())
+    assert vote["answers"][0]["answer"] == "5" and vote["model_reported"] == "muse-spark-1.3"
+    with pytest.raises(ValueError, match="tool use"):
+        v3.parse_muse_stream(muse_stream(extra=[{"payload_type": "task.tool.started", "payload": {}}]))
+    with pytest.raises(ValueError, match="Judge failed"):
+        v3.parse_muse_stream(muse_stream(terminal="cancelled"))
