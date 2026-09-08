@@ -1321,7 +1321,7 @@ def run_stage(panel: str, stage: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("action", choices=("prepare", "calibrate", "run", "probe", "read", "summarize"))
-    parser.add_argument("--panel", choices=("astra", "claude", "reader"))
+    parser.add_argument("--panel", choices=(*PANELS, *SENSITIVITY_PANELS, "reader"))
     args = parser.parse_args()
     OUT.mkdir(exist_ok=True)
     if args.action == "prepare":
