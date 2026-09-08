@@ -29,6 +29,11 @@ from harness.redaction import sanitize
 
 MODELS = {"muse-spark-1.3", "muse-spark-1.3-contributor"}
 EFFORTS = {"minimal", "low", "medium", "high", "xhigh", "max", "ultra"}
+# Muse Code aborts a run when the provider stream is silent this long. The
+# 180 s default killed five lodgecore attempts on 2026-09-08 during Meta
+# Contributor stalls; raised by protocol amendment. Scored results are
+# unaffected because only completed runs are graded.
+STREAM_IDLE_TIMEOUT_SECS = 900
 
 
 def pinned_executable() -> tuple[Path, str]:
@@ -239,6 +244,7 @@ class MuseCodeAdapter:
             TMPDIR=str(scratch / "tmp"),
             TMP=str(scratch / "tmp"),
             TEMP=str(scratch / "tmp"),
+            TBH_STREAM_IDLE_TIMEOUT_SECS=str(STREAM_IDLE_TIMEOUT_SECS),
         )
         session_id = str(uuid.uuid4())
         # Kernel denial covers all Muse tools, not just shell tools. The task
@@ -281,6 +287,7 @@ class MuseCodeAdapter:
                 "pricing_tier": "contributor" if model.endswith("-contributor") else "standard",
                 "session_data_root": str(scratch / "data"),
                 "requested_effort": effort,
+                "stream_idle_timeout_secs": STREAM_IDLE_TIMEOUT_SECS,
             },
         )
         outcome = CliAgentOutcome(

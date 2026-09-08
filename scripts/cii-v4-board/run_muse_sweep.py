@@ -13,7 +13,7 @@ from pathlib import Path
 
 from harness.agent.cli_agents import get_cli_agent_adapter
 from harness.agent.loop import run_agent
-from harness.agent.muse_code import pinned_executable
+from harness.agent.muse_code import STREAM_IDLE_TIMEOUT_SECS, pinned_executable
 from harness.tasks import load_task, task_hash
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -127,6 +127,17 @@ def main():
         },
         "price_source": "https://dev.meta.ai/docs/pricing-rate-limits/",
         "runtime_caveat": "Local host, concurrent Fable sweep; no CPU pinning",
+        "stream_idle_timeout_secs": STREAM_IDLE_TIMEOUT_SECS,
+        "amendments": [
+            {
+                "at": "2026-09-08T17:50:00+00:00",
+                "change": "Raised Muse Code model stream idle timeout from the 180 s default to 900 s via TBH_STREAM_IDLE_TIMEOUT_SECS",
+                "reason": "Meta Contributor stream stalls aborted 5 consecutive lodgecore attempts (minimal) plus blendcore x2 and stampcore x1; no completed run was affected",
+                "state_at_amendment": "minimal: 20/23 complete; low through ultra not started",
+                "approved_by": "user, in chat",
+                "original_protocol": "protocol-original-2026-09-06.json",
+            }
+        ],
         "boundary": "Kernel-denied checkout/prior agent sessions/shared temp artifacts; isolated writes and explicit TMPDIR guidance; web tools disabled; shell network not isolated",
         "source_hashes": {
             p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest()
