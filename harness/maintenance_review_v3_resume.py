@@ -7,6 +7,13 @@ script re-invokes a stage; if it stops on exactly that subtype with only
 attempt-1 recorded, it marks the receipt retryable with a review note and
 re-invokes. Any other failure, or a second failure on the same call, stops.
 
+Second rule (same log): when both attempts of a review failed only on
+"Unsupported evidence excerpt" and every rejected excerpt matches the source
+once whitespace and line breaks are collapsed, the attempt-1 response is
+selected with each such excerpt re-wrapped to the source's own line breaks.
+Scores and text are untouched; the original excerpt is recorded. A quote that
+does not match the source even after collapsing is not recovered.
+
 Usage: python -m harness.maintenance_review_v3_resume calibrate --panel claude
 """
 
@@ -18,9 +25,75 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
+from harness import maintenance_review_v3 as v3
+from harness import retrospective_judging as base
 from harness.maintenance_review_v3 import OUT
 
 SUBTYPE = "error_max_structured_output_retries"
+EXCERPT_ERROR = "Unsupported evidence excerpt"
+
+
+def _collapse(text: str) -> str:
+    return " ".join(text.split())
+
+
+def rewrap_excerpt(excerpt: str, source: list[str]) -> str | None:
+    """Return the verbatim source span whose collapsed form contains the collapsed excerpt."""
+    if v3.excerpt_supported(excerpt, source):
+        return excerpt
+    target = _collapse(excerpt)
+    if not target:
+        return None
+    for text in source:
+        lines = text.splitlines()
+        for start in range(len(lines)):
+            joined = ""
+            for end in range(start, min(start + 12, len(lines))):
+                joined = _collapse(joined + " " + lines[end])
+                if target in joined:
+                    span = "\n".join(lines[start:end + 1])
+                    return span if v3.excerpt_supported(span, source) else None
+                if len(joined) > len(target) + 400:
+                    break
+    return None
+
+
+def recover_excerpts(folder: Path, panel: str, stage: str) -> bool:  # noqa: PLR0911, one early exit per precondition
+    receipts = [folder / f"attempt-{n}.json" for n in (1, 2)]
+    if not all(r.exists() for r in receipts):
+        return False
+    if any(json.loads(r.read_text()).get("error") != EXCERPT_ERROR for r in receipts):
+        return False
+    stream = folder / "attempt-1.stream.jsonl"
+    if not stream.exists():
+        return False
+    ident = folder.name
+    evidence = v3.read(OUT / "evidence" / f"{ident}.json") if stage in ("primary", "repeat") else None
+    if evidence is None:
+        return False
+    source = list(v3.strings(evidence))
+    vote = v3.parse_claude_stream(stream.read_text()) if panel != "astra" else None
+    if vote is None:
+        return False
+    recovered = {}
+    for dim, detail in vote["dimensions"].items():
+        span = rewrap_excerpt(detail["excerpt"], source)
+        if span is None:
+            print(json.dumps({"event": "excerpt_not_recoverable", "call": ident, "dimension": dim}), flush=True)
+            return False
+        if span != detail["excerpt"]:
+            recovered[dim] = detail["excerpt"]
+            detail["excerpt"] = span
+    v3.validate("review", vote, evidence)
+    vote["reported_score"] = vote["score"]
+    vote.update(v3.host_review_score(vote))
+    binding = json.loads(receipts[0].read_text())["binding"]
+    vote.update(binding=binding, status="complete", stage=stage, panel=panel, kind="review",
+                operator_recovery={"at": datetime.now(UTC).isoformat(), "method": "excerpt re-wrapped to source line breaks",
+                                   "original_excerpts": recovered, "source_attempt": 1})
+    base.save(folder / "selected.json", vote)
+    print(json.dumps({"event": "excerpt_recovery_applied", "call": str(folder.relative_to(OUT)), "dimensions": sorted(recovered)}), flush=True)
+    return True
 
 
 def newest_unresolved(panel: str) -> Path | None:
@@ -63,11 +136,16 @@ def main() -> int:
             print(json.dumps({"event": "stage_complete", "operator_rule_applications": applied}), flush=True)
             return 0
         folder = newest_unresolved(panel)
-        if folder is None or not apply_rule(folder):
+        if folder is not None and apply_rule(folder):
+            applied += 1
+            continue
+        if folder is not None and recover_excerpts(folder, panel, folder.parent.name):
+            applied += 1
+            continue
+        if True:
             print(json.dumps({"event": "stopped_for_operator", "call": str(folder) if folder else None,
                               "operator_rule_applications": applied}), flush=True)
             return proc.returncode
-        applied += 1
 
 
 if __name__ == "__main__":

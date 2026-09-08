@@ -39,3 +39,21 @@ operational notes live here.
 - v3.2 calibration verdict: Astra passed, Opus 5 passed, reader failed gate
   17. Both panels are eligible for the full pass under the frozen protocol
   (hash 47ae9135). L5 results will not be published.
+
+## v3.2 full pass
+
+- Astra: all 230 primary reviews and 10 repeats complete; 2 of 10 pairwise
+  calls complete. Stopped on the Codex subscription usage limit ("try again
+  at Sep 12th, 2026 8:50 AM"). Per protocol: receipts preserved, no paid API
+  fallback, resume with identical frozen inputs after the reset. Remaining
+  for Astra: 8 pairwise, 230 probe, 230 match calls.
+- Opus 5: stopped at primary review 101 after the retry rule fired four
+  times in 100 reviews. Both attempts on submission 101 failed only the
+  excerpt rule: the intent excerpt joined a hard-wrapped Markdown line into
+  one line. Content verbatim, scores unaffected. Second operator rule added
+  to the wrapper: when both attempts fail only on excerpts and every
+  rejected excerpt matches the source once whitespace and line breaks are
+  collapsed, attempt 1 is selected with those excerpts re-wrapped to the
+  source's line breaks, scores untouched, original excerpts recorded in
+  the selected receipt under operator_recovery. Quotes that do not match
+  after collapsing are not recovered and stop for a person.
