@@ -97,3 +97,6 @@ operational notes live here.
   Awaiting the owner's acknowledgement before recording the panel as
   failed; nothing further runs for GLM meanwhile.
 - Grok 4.6: running clean, 7 reviews in, about 50 seconds per review.
+- GLM 5.3 recorded as failed calibration (gate 1) on the owner's decision
+  to select a different second judge. `calibration-glm.json` carries the
+  operator record; receipts retained.
