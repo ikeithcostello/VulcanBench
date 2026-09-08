@@ -120,3 +120,9 @@ operational notes live here.
   (`/Users/morganlinton/dev/VulcanBench-frozen-v32`), whose runner and
   document match the v3.2 hashes; `verify_frozen` passed from it before the
   relaunch. Astra's launcher for September 12 points at the same worktree.
+- Muse Spark 1.3: passed all twenty gates on 80 calls, no allowance used,
+  no operator rule applied. Closest gate: repeatability, margin 0.02. Both
+  neutral judges are now calibrated (Grok under v3.3, Muse under v3.4).
+  Muse full pass started under v3.4 from the main tree at the freeze commit;
+  the runner must not be edited while it runs, or the pass moves to a
+  worktree at that commit like the older panels.
