@@ -57,3 +57,12 @@ operational notes live here.
   source's line breaks, scores untouched, original excerpts recorded in
   the selected receipt under operator_recovery. Quotes that do not match
   after collapsing are not recovered and stop for a person.
+- Opus 5, primary submission 133 (evening of September 7): both attempts were
+  answered by claude-opus-4-8 although the session requested and reported
+  claude-opus-5, with no model_fallback event and no refusal text in the
+  stream. This is the silent refusal fallback previously documented in the
+  Fable panel comparison. The v3 protocol text accepts no reviewer fallback,
+  so the identity guard rejected both attempts and the chain stopped. Not
+  recoverable by either wrapper rule; awaiting the benchmark owner's policy
+  decision. Opus 5 stands at 132 of 230 primary reviews. No other Opus 5
+  stream in this run contains a fallback.
