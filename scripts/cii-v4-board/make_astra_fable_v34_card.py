@@ -166,7 +166,7 @@ def main():  # noqa: PLR0912, PLR0915, one linear figure
     for font in (ROOT / "scripts/rankings-chart").glob("*.ttf"):
         font_manager.fontManager.addfont(font)
     plt.rcParams.update({"font.family": "Geist", "text.color": INK, "svg.fonttype": "path"})
-    width_in, height_in = 16, 12.9
+    width_in, height_in = 16, 12.7
     fig = plt.figure(figsize=(width_in, height_in), dpi=150, facecolor=PAPER)
 
     def yf(inches):
@@ -209,7 +209,7 @@ def main():  # noqa: PLR0912, PLR0915, one linear figure
 
     # Score panels
     a, f = best["astra"], best["fable"]
-    panel_top, panel_h, panel_w = 2.95, 3.3, .42
+    panel_top, panel_h, panel_w = 2.95, 3.1, .42
     for model, g, x in (("astra", a, left), ("fable", f, right - panel_w)):
         tint = {"astra": "#e6f4ef", "fable": "#fbeae2"}[model]
         box(x, panel_top, panel_w, panel_h, tint, RULE)
@@ -228,22 +228,21 @@ def main():  # noqa: PLR0912, PLR0915, one linear figure
             selected = effort == g["effort"]
             text(cx, panel_top + 2.62, effort.replace("-", " ").capitalize(), 10.5, ha="center", color=MUTED)
             text(cx, panel_top + 2.88, fmt(ge["combined"]), 15, selected, numeric=True, ha="center")
-            text(cx, panel_top + 3.12, f"{ge['passed']}/{ge['n']} passed", 9.5, ha="center", color=MUTED)
             if selected:
                 half = (inner_right - inner_left) / len(LEVELS) * .36
                 fig.add_artist(plt.Line2D([cx - half, cx + half], [yf(panel_top + 3.01), yf(panel_top + 3.01)],
                                           transform=fig.transFigure, color=COLORS[model], lw=2))
 
     # Table
-    text(left, 6.95, "Table 1  |  Score components at each model's best effort", 14.5, False, heading=True)
+    text(left, 6.75, "Table 1  |  Score components at each model's best effort", 14.5, False, heading=True)
     col_a, col_f, col_d = .60, .78, .94
-    line(left, right, 7.23, INK, 1.2)
-    text(left, 7.47, "Component", 12.5, True)
-    text(col_a, 7.47, "GPT-6 Astra", 12.5, True, ha="right")
-    text(col_f, 7.47, "Fable 5.1", 12.5, True, ha="right")
-    text(col_d, 7.47, "Difference", 12.5, True, ha="right")
-    text(col_d, 7.73, "Fable minus Astra", 10, ha="right", color=MUTED)
-    line(left, right, 7.9, INK, .6)
+    line(left, right, 7.03, INK, 1.2)
+    text(left, 7.27, "Component", 12.5, True)
+    text(col_a, 7.27, "GPT-6 Astra", 12.5, True, ha="right")
+    text(col_f, 7.27, "Fable 5.1", 12.5, True, ha="right")
+    text(col_d, 7.27, "Difference", 12.5, True, ha="right")
+    text(col_d, 7.53, "Fable minus Astra", 10, ha="right", color=MUTED)
+    line(left, right, 7.7, INK, .6)
 
     def se(stat):
         return {"mean": stat["se"], "se": None} if stat.get("se") is not None else {"mean": None, "se": None}
@@ -262,7 +261,7 @@ def main():  # noqa: PLR0912, PLR0915, one linear figure
         ("Mean runtime per task, minutes", a["minutes"], f["minutes"], 2, False, True),
     ]
     step = .38
-    y = 8.22
+    y = 8.02
     for label, sa, sf, digits, emphasis, group_end in rows:
         quiet = label.startswith("Standard error")
         text(left, y, label, 13 if emphasis else 12.5, emphasis, color=MUTED if quiet else INK)
