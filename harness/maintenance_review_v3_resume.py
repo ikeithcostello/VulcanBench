@@ -14,6 +14,13 @@ selected with each such excerpt re-wrapped to the source's own line breaks.
 Scores and text are untouched; the original excerpt is recorded. A quote that
 does not match the source even after collapsing is not recovered.
 
+Third rule (owner decision, September 7, 2026, evening): retain and disclose
+reviewer fallbacks. When an attempt failed only the identity guard, the
+session requested and reported claude-opus-5, every assistant message came
+from claude-opus-4-8 (the CLI's silent refusal fallback), no tool was used,
+and the response validates, it is selected with a reviewer_fallback record.
+Any other model, or an invalid response, is not recovered.
+
 Usage: python -m harness.maintenance_review_v3_resume calibrate --panel claude
 """
 
@@ -31,6 +38,75 @@ from harness.maintenance_review_v3 import OUT
 
 SUBTYPE = "error_max_structured_output_retries"
 EXCERPT_ERROR = "Unsupported evidence excerpt"
+IDENTITY_ERROR = "Claude reviewer identity or fallback guard failed"
+FALLBACK_MODEL = "claude-opus-4-8"
+REQUESTED_MODEL = "claude-opus-5"
+
+
+def stage_kind(stage: str) -> str:
+    return {"primary": "review", "repeat": "review", "pairwise": "pair", "probe": "probe", "match": "match"}[stage]
+
+
+def payload_for(stage: str, ident: str) -> dict | None:
+    """Rebuild the frozen payload for a call so a recovered response can be validated."""
+    if stage in ("primary", "repeat"):
+        return v3.read(OUT / "evidence" / f"{ident}.json")
+    if stage == "pairwise":
+        a, b = ident.split("-submission-")
+        b = "submission-" + b
+        return {"A": v3.read(OUT / "evidence" / f"{a}.json"), "B": v3.read(OUT / "evidence" / f"{b}.json")}
+    if stage == "probe":
+        return v3.probe_evidence(v3.read(OUT / "evidence" / f"{ident}.json"))
+    if stage == "match":
+        probe = OUT / "calls" / "claude" / "probe" / ident / "selected.json"
+        if not probe.exists():
+            return None
+        row = next(r for r in v3.read(OUT / "private-manifest.json") if r["id"] == ident)
+        return {"key": v3.load_key(row["task"])["quirks"], "departures": v3.read(probe)["departures"]}
+    return None
+
+
+def assistant_models(stream_text: str) -> set[str]:
+    return {json.loads(line)["message"]["model"] for line in stream_text.splitlines()
+            if line.strip() and "\"type\":\"assistant\"" in line}
+
+
+def accept_fallback(folder: Path, panel: str, stage: str) -> bool:
+    if panel == "astra":
+        return False
+    kind = stage_kind(stage)
+    payload = payload_for(stage, folder.name)
+    if payload is None:
+        return False
+    for n in (2, 1):
+        receipt = folder / f"attempt-{n}.json"
+        stream = folder / f"attempt-{n}.stream.jsonl"
+        if not receipt.exists() or not stream.exists():
+            continue
+        rec = json.loads(receipt.read_text())
+        if rec.get("status") != "failed" or rec.get("error") != IDENTITY_ERROR:
+            continue
+        text = stream.read_text()
+        if assistant_models(text) != {FALLBACK_MODEL}:
+            continue
+        try:
+            vote = v3.parse_claude_stream(text)
+            if vote["model_reported"] != REQUESTED_MODEL:
+                continue
+            v3.validate(kind, vote, payload)
+        except (ValueError, json.JSONDecodeError, KeyError):
+            continue
+        if kind == "review":
+            vote["reported_score"] = vote["score"]
+            vote.update(v3.host_review_score(vote))
+        vote.update(binding=rec["binding"], status="complete", stage=stage, panel=panel, kind=kind,
+                    reviewer_fallback={"at": datetime.now(UTC).isoformat(), "requested": REQUESTED_MODEL,
+                                       "served": FALLBACK_MODEL, "source_attempt": n,
+                                       "policy": "retain and disclose reviewer fallbacks (owner decision 2026-09-07)"})
+        base.save(folder / "selected.json", vote)
+        print(json.dumps({"event": "reviewer_fallback_accepted", "call": str(folder.relative_to(OUT)), "attempt": n}), flush=True)
+        return True
+    return False
 
 
 def _collapse(text: str) -> str:
@@ -140,6 +216,9 @@ def main() -> int:
             applied += 1
             continue
         if folder is not None and recover_excerpts(folder, panel, folder.parent.name):
+            applied += 1
+            continue
+        if folder is not None and accept_fallback(folder, panel, folder.parent.name):
             applied += 1
             continue
         if True:

@@ -66,3 +66,12 @@ operational notes live here.
   recoverable by either wrapper rule; awaiting the benchmark owner's policy
   decision. Opus 5 stands at 132 of 230 primary reviews. No other Opus 5
   stream in this run contains a fallback.
+- Owner decision, evening of September 7, 2026: retain and disclose
+  reviewer fallbacks, as in the earlier Fable panel comparison. This amends
+  the protocol text's "no reviewer fallback is accepted" for the v3.2 full
+  pass; no gate, weight, prompt, or hash changes. Mechanism: third wrapper
+  rule. An attempt that failed only the identity guard, whose session
+  requested and reported claude-opus-5, whose every assistant message came
+  from claude-opus-4-8, that used no tool, and whose response validates, is
+  selected with a reviewer_fallback record in the receipt. The card and
+  summary must report the count of fallback-served reviews per stage.
