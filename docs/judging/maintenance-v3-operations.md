@@ -100,3 +100,6 @@ operational notes live here.
 - GLM 5.3 recorded as failed calibration (gate 1) on the owner's decision
   to select a different second judge. `calibration-glm.json` carries the
   operator record; receipts retained.
+- Grok 4.6: passed all twenty gates on 80 calls, no allowance used, no
+  operator rule applied at any point. Closest gate: formatting, margin 0.20.
+  Full pass started under v3.3 (primary, repeat, pairwise, probe, match).
