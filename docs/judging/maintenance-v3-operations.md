@@ -103,3 +103,12 @@ operational notes live here.
 - Grok 4.6: passed all twenty gates on 80 calls, no allowance used, no
   operator rule applied at any point. Closest gate: formatting, margin 0.20.
   Full pass started under v3.3 (primary, repeat, pairwise, probe, match).
+- Frozen-code execution: the v3.3 protocol binds the runner's hash, and the
+  runner changed for v3.4, so Grok's full pass runs from a git worktree at
+  commit 6040f28a (`/Users/morganlinton/dev/VulcanBench-frozen-v33`), whose
+  runner and protocol document match the v3.3 hashes. The worktree holds
+  copies of the untracked judging modules (unchanged, hashes verified by
+  `verify_frozen`), the latest operator wrapper (not hash-bound), and
+  symlinks to the v3.3 and v3.2 run directories and the comparison file.
+  `verify_frozen` passed from the worktree before the first call. Launcher:
+  `logs/cii-v4-maint-v33-fullpass-grok.sh`.
