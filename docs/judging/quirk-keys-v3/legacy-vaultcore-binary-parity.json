@@ -1,0 +1,98 @@
+{
+  "task": "legacy-vaultcore-binary-parity",
+  "protocol": "code-quality-maintenance-v3",
+  "sources": [
+    "metadata.json decontamination_notes",
+    "builder/gold_vaultcore.py",
+    "tests/fixtures.json"
+  ],
+  "quirks": [
+    {
+      "id": "Q1",
+      "condition": "A v1 document migrated by the bulk sweep (M).",
+      "effect": "Trailing decimal digits are stripped from the body before uppercasing, which can leave the body empty (digest 0); a lazy read migration only uppercases, so the same body migrated by the two paths can store differently. The spec says both paths uppercase only.",
+      "families": [
+        "sweep_vs_read",
+        "checksum_drift"
+      ]
+    },
+    {
+      "id": "Q2",
+      "condition": "A v1 document migrated by the bulk sweep whose body is still exactly 20 characters after the trailing-digit strip.",
+      "effect": "The body is truncated to its first 18 characters before uppercasing; bodies of 19 or fewer characters after the strip are kept whole, and the lazy read path never truncates.",
+      "families": [
+        "maxlen_bodies"
+      ]
+    },
+    {
+      "id": "Q3",
+      "condition": "A W at version 1 over a document currently stored at version 1, followed later by a read while it is still at version 1.",
+      "effect": "The rewrite marks the document, and the next lazy read migrates it with the bulk-sweep transform (digit strip, conditional truncation, uppercase) instead of uppercasing only; a v2 write, a sweep, or the read itself clears the mark, and a fresh document or a v1 write over a v2 document is unmarked.",
+      "families": [
+        "rewrite_dirty"
+      ]
+    },
+    {
+      "id": "Q4",
+      "condition": "A W at version 1 over a document currently stored at version 2.",
+      "effect": "The write is accepted with OK and the document is stored at version 1 with the new body; the spec rejects it with R <doc> VER.",
+      "families": [
+        "downgrade"
+      ]
+    },
+    {
+      "id": "Q5",
+      "condition": "Any digest computation (G reply and C sum).",
+      "effect": "The first byte of the stored body is skipped; the weight cycle 4, 9 starts at the second byte, so a one-character body digests to 0. The spec starts the cycle at the first byte.",
+      "families": [
+        "digest_skew"
+      ]
+    },
+    {
+      "id": "Q6",
+      "condition": "A document id that differs only in letter case from one already stored.",
+      "effect": "It refers to the existing document, and replies echo the first-seen spelling; the spec treats ids as case-sensitive.",
+      "families": [
+        "doc_case_fold"
+      ]
+    },
+    {
+      "id": "Q7",
+      "condition": "A W, G, M, or C command with extra tokens after the documented ones.",
+      "effect": "The extra tokens are ignored and the command is processed; the spec rejects them with FMT.",
+      "families": [
+        "lenient_tokens"
+      ]
+    }
+  ],
+  "unmapped_families": [
+    {
+      "family": "full_corpus_parity",
+      "reason": "Held-out mixed corpus exercising every quirk together with spec-accurate paths; no single quirk maps to it."
+    }
+  ],
+  "reader_questions": [
+    {
+      "id": "R1",
+      "type": "behavioural",
+      "question": "Stream: W d1 2 AB, then G d1. What digest does the read reply report?",
+      "answer": "70",
+      "check": "exact",
+      "verification": "Gold builder/gold_vaultcore.py process() and repo/legacy/run on stream ['W d1 2 AB', 'G d1']; replies 'OK 0 1', 'D 70' (the spec's formula would give 78)."
+    },
+    {
+      "id": "R2",
+      "type": "behavioural",
+      "question": "Stream: W d1 1 abc123, then M, then G d1. What digest does the read reply report?",
+      "answer": "91",
+      "check": "exact",
+      "verification": "Gold builder/gold_vaultcore.py process() and repo/legacy/run on stream ['W d1 1 abc123', 'M', 'G d1']; replies 'OK 1 0', 'M 1', 'D 91' (with the M omitted the read replies 'D 68')."
+    },
+    {
+      "id": "R3",
+      "type": "locate",
+      "question": "Name the function that decides which migration transform a read applies to a version 1 document.",
+      "quirk": "Q3"
+    }
+  ]
+}

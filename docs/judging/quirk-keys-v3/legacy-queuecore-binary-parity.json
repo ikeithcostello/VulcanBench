@@ -1,0 +1,97 @@
+{
+  "task": "legacy-queuecore-binary-parity",
+  "protocol": "code-quality-maintenance-v3",
+  "sources": [
+    "metadata.json decontamination_notes",
+    "builder/gold_queuecore.py",
+    "tests/fixtures.json"
+  ],
+  "quirks": [
+    {
+      "id": "Q1",
+      "condition": "An accepted F on an item that has now failed fewer than three times.",
+      "effect": "The item re-enters the queue at its original priority minus 10 per failure accumulated so far, floored at 1; the per-item failure count persists across the session and is never printed.",
+      "families": [
+        "requeue_penalty"
+      ]
+    },
+    {
+      "id": "Q2",
+      "condition": "An item re-entering the queue after an accepted F, versus an item re-entering through K.",
+      "effect": "A requeued item keeps its original arrival sequence number, so among equal priorities it dequeues ahead of any item enqueued after its first arrival; an item drained by K receives a fresh sequence number and goes behind everything already waiting at its priority.",
+      "families": [
+        "tie_aging"
+      ]
+    },
+    {
+      "id": "Q3",
+      "condition": "An accepted F whose computed requeue priority is an exact multiple of 100.",
+      "effect": "The item is dead-lettered immediately with a DLQ reply, whatever its failure count.",
+      "families": [
+        "sentinel"
+      ]
+    },
+    {
+      "id": "Q4",
+      "condition": "An accepted F on an item whose original priority is 999.",
+      "effect": "The requeue priority is computed from a base of 1000, so the first requeue lands at 990 and the second at 980, with the result clamped to the range 1 to 999.",
+      "families": [
+        "cap999"
+      ]
+    },
+    {
+      "id": "Q5",
+      "condition": "An F naming the second most recently dequeued item, when the most recently dequeued item has already been failed and the named item has not.",
+      "effect": "The F is accepted and processed as a normal failure; the engine remembers the last two dequeues, not only the most recent one.",
+      "families": [
+        "undo_two_deep"
+      ]
+    },
+    {
+      "id": "Q6",
+      "condition": "An item id that differs only in letter case from one already seen in the session.",
+      "effect": "It is treated as the same item for enqueue, fail, and dead-letter state, and output lines echo the first-seen spelling.",
+      "families": [
+        "item_case"
+      ]
+    },
+    {
+      "id": "Q7",
+      "condition": "An N, D, F, or K command carrying more tokens than documented.",
+      "effect": "The extra tokens are ignored and the command runs normally; FMT rejects echo the item token, or ???????? when it is missing or malformed.",
+      "families": [
+        "trailing"
+      ]
+    }
+  ],
+  "unmapped_families": [
+    {
+      "family": "full_corpus_parity",
+      "reason": "Two mixed 150+ command corpora exercising every quirk above together with the documented behaviour; no single quirk maps."
+    }
+  ],
+  "reader_questions": [
+    {
+      "id": "R1",
+      "type": "behavioural",
+      "question": "An item is enqueued at priority 110, then dequeued, then reported failed with F. Input ends there. What is the fourth number on the X trailer line?",
+      "answer": "1",
+      "check": "exact",
+      "verification": "printf 'N q 110\\nD\\nF q\\n' | .venv/bin/python builder/gold_queuecore.py -> OK 1 / I q / DLQ q / X 1 1 1 1"
+    },
+    {
+      "id": "R2",
+      "type": "behavioural",
+      "question": "An item is enqueued at priority 999, then dequeued, then reported failed with F once. At what priority does it wait in the queue after that F?",
+      "answer": "990",
+      "check": "exact",
+      "verification": "printf 'N a 999\\nN c 990\\nD\\nF a\\nD\\nD\\n' | .venv/bin/python builder/gold_queuecore.py -> OK 1 / OK 2 / I a / OK 2 / I a / I c / X 2 3 1 0. Item a dequeues ahead of c, which waits at 990 with a later sequence number, so a rejoined at exactly 990 (at 989 the order would be c then a)."
+    },
+    {
+      "id": "R3",
+      "type": "locate",
+      "question": "Name the function that computes the priority at which a failed item re-enters the queue.",
+      "quirk": "Q1"
+    }
+  ]
+}

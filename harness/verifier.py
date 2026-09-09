@@ -20,6 +20,7 @@ verification happens in the same isolated, reproducible environment as the run.
 
 from __future__ import annotations
 
+import re
 import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -80,6 +81,11 @@ def _infrastructure_reason(cmd: str, outcome: RunnerOutcome) -> str | None:
     if "no module named pytest" in output or "no module named 'pytest'" in output:
         return "pytest is unavailable in the verifier environment"
     missing_commands = ("python", "python3", "pytest", "go", "cargo", "npm", "node")
+    if outcome.exit_code in {126, 127} and re.search(
+        r"(?:python3?|pytest|go|cargo|npm|node): (?:command )?not found", output
+    ):
+        # Commands often begin with environment assignments, e.g. PYTHONPATH=.
+        return "verifier toolchain command is unavailable"
     if outcome.exit_code in {126, 127} and any(
         cmd.lstrip().startswith(executable) for executable in missing_commands
     ):

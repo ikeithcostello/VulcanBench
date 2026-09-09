@@ -1,0 +1,121 @@
+{
+  "source": "/Users/morganlinton/dev/VulcanBench/docs/results/swe-v4-astra-fable51-2026-09/comparison.json",
+  "source_sha256": "fc5405e3da76c2b6904013a367f5c98250207f16f7d9195f54f618474b7cbe1e",
+  "selection": "Highest observed combined-score effort per model from five complete efforts",
+  "selected_groups": {
+    "astra": {
+      "model": "astra",
+      "effort": "extra-high",
+      "n": 23,
+      "passed": 23,
+      "fallback_runs": 0,
+      "solver_seconds": 11164.886,
+      "reported_tokens": 21331912,
+      "raw_tokens": 21331912,
+      "combined": {
+        "mean": 92.3903695652174,
+        "se": 0.1651478263939305
+      },
+      "panel": {
+        "mean": 86.17391304347827,
+        "se": 0.3711782804284642
+      },
+      "functional": {
+        "mean": 100.0,
+        "se": 0.0
+      },
+      "quality": {
+        "mean": 81.61695652173913,
+        "se": 0.45463768955931205
+      },
+      "security": {
+        "mean": 86.08695652173913,
+        "se": 1.1314984354387065
+      },
+      "astra": {
+        "mean": 92.36304347826086,
+        "se": 0.4252408918714287
+      },
+      "claude": {
+        "mean": 79.98478260869565,
+        "se": 0.4695641194541401
+      },
+      "minutes": {
+        "mean": 8.090497101449275,
+        "se": 0.5844684964850173
+      }
+    },
+    "fable": {
+      "model": "fable",
+      "effort": "max",
+      "n": 23,
+      "passed": 23,
+      "fallback_runs": 2,
+      "solver_seconds": 37392.971,
+      "reported_tokens": 15532297,
+      "raw_tokens": 87936207,
+      "combined": {
+        "mean": 92.89621739130435,
+        "se": 0.4922300656960982
+      },
+      "panel": {
+        "mean": 85.36304347826086,
+        "se": 0.3957553616038381
+      },
+      "functional": {
+        "mean": 100.0,
+        "se": 0.0
+      },
+      "quality": {
+        "mean": 82.15739130434783,
+        "se": 0.6517020031772034
+      },
+      "security": {
+        "mean": 90.0,
+        "se": 3.236403605917417
+      },
+      "astra": {
+        "mean": 89.24652173913043,
+        "se": 0.5553155313921952
+      },
+      "claude": {
+        "mean": 81.47956521739131,
+        "se": 0.397492873260432
+      },
+      "minutes": {
+        "mean": 27.09635579710145,
+        "se": 3.764144230041088
+      }
+    }
+  },
+  "astra_matched_effort_leads": {
+    "combined": 4,
+    "panel": 5,
+    "runtime": 5
+  },
+  "fable_best_score_minus_astra_best_score": 0.5058478260869492,
+  "fable_runtime_divided_by_astra_runtime_at_selected_efforts": 3.349158334442466,
+  "score_axis": [
+    90,
+    95
+  ],
+  "runtime_axis": [
+    0,
+    40
+  ],
+  "notes": [
+    "11 of 115 Fable runs switched to Opus 4.8 after refusal; all are included.",
+    "Model plus harness comparison, not isolated base-model performance.",
+    "Code quality is an equal Astra/Claude LLM panel, not human ground truth; bias remains possible.",
+    "Reviewer prompts and effort match; Claude CLI was 2.1.260 for Astra and 2.1.261 for Fable.",
+    "Astra reviewer identity is requested-only because its stream lacks a model receipt.",
+    "Runtime is summed solver duration or mean per task, excluding post-hoc judging and pauses between tasks.",
+    "Raw tokens are reconstructed from CLI result receipts, including cache reads and writes. Auxiliary model accounting may differ by CLI.",
+    "Fable historical summaries contain cache-price-weighted units and omit earlier usage in four multi-result runs; these summaries are preserved but not compared as raw tokens.",
+    "Whiskers show one sample SE across 23 tasks, not judge uncertainty or a significance test."
+  ],
+  "supporting_table": "effort-comparison.csv",
+  "png_sha256": "e0bc6d80b68374cdbecd2804f5a38ddee2e0ddfbe70d3054f501daa4c52e80ad",
+  "svg_sha256": "322fc7a7bbc28943e283395f85d7982f9175d131c8533221930fa306aadd790f",
+  "visual_qa": "Requires visual inspection after rendering"
+}

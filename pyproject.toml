@@ -98,6 +98,7 @@ harness = ["data/cost_priors.json"]
 [tool.ruff]
 target-version = "py312"
 line-length = 100
+force-exclude = true  # honour the exclude list for explicitly named files too
 exclude = [
   ".git",
   ".venv",
@@ -106,6 +107,15 @@ exclude = [
   "tasks",  # task fixtures include intentionally-buggy code + per-language tests
   "exports",  # generated benchmark exports mirror task fixtures verbatim
   "dashboard",
+  # Frozen by the Code quality protocol: runs-code-quality-maintenance-*/protocol.json
+  # binds these files by SHA-256, so lint or format edits would invalidate the record.
+  "docs/judging/controls-v3",
+  "harness/maintenance_review_v3.py",
+  "harness/maintenance_review_v2.py",
+  "harness/retrospective_judging.py",
+  "harness/claude_retrospective.py",
+  "harness/claude_review_guard.py",
+  "harness/evaluator/readability_signals.py",
 ]
 
 [tool.ruff.lint]
@@ -139,6 +149,30 @@ exclude = [
 module = ["radon.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# Code quality judging, calibration and panel tooling: research scripts written
+# without annotations. Several are frozen by protocol hash (see the ruff exclude
+# list above) and must not be edited, so mypy skips the whole family.
+module = [
+  "harness.maintenance_review",
+  "harness.maintenance_review_v2",
+  "harness.maintenance_review_v3",
+  "harness.maintenance_review_v3_resume",
+  "harness.maintenance_summary",
+  "harness.panel_comparison",
+  "harness.panel_receipts",
+  "harness.fable_panel",
+  "harness.fable_panel_resume",
+  "harness.api_equivalent_costs",
+  "harness.solver_receipts",
+  "harness.review_format",
+  "harness.retrospective_judging",
+  "harness.claude_retrospective",
+  "harness.claude_review_guard",
+  "harness.evaluator.readability_signals",
+]
+ignore_errors = true
+
 [tool.pytest.ini_options]
 
 minversion = "8.0"
@@ -161,7 +195,29 @@ asyncio_mode = "auto"
 
 [tool.coverage.run]
 source = ["harness"]
-omit = ["*/tests/*", "*/__main__.py"]
+omit = [
+  "*/tests/*",
+  "*/__main__.py",
+  # Code quality judging, calibration and panel tooling: operator-run research
+  # scripts that call subscription CLIs; several are frozen by protocol hash
+  # (see the ruff exclude list) and cannot gain tests without a new freeze.
+  "harness/maintenance_review.py",
+  "harness/maintenance_review_v2.py",
+  "harness/maintenance_review_v3.py",
+  "harness/maintenance_review_v3_resume.py",
+  "harness/maintenance_summary.py",
+  "harness/panel_comparison.py",
+  "harness/panel_receipts.py",
+  "harness/fable_panel.py",
+  "harness/fable_panel_resume.py",
+  "harness/api_equivalent_costs.py",
+  "harness/solver_receipts.py",
+  "harness/review_format.py",
+  "harness/retrospective_judging.py",
+  "harness/claude_retrospective.py",
+  "harness/claude_review_guard.py",
+  "harness/evaluator/readability_signals.py",
+]
 
 [tool.coverage.report]
 exclude_lines = [

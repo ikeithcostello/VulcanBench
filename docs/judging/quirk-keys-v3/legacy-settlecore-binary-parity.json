@@ -1,0 +1,113 @@
+{
+  "task": "legacy-settlecore-binary-parity",
+  "protocol": "code-quality-maintenance-v3",
+  "sources": [
+    "metadata.json decontamination_notes",
+    "builder/gold_settlecore.py",
+    "tests/fixtures.json"
+  ],
+  "quirks": [
+    {
+      "id": "Q1",
+      "condition": "Any accepted record's base fee is rounded from amount times rate in basis points to whole cents.",
+      "effect": "JPY records round half-up; ST records in other currencies round half-to-even; RF records in other currencies truncate toward zero. The spec says nearest cent for all.",
+      "families": [
+        "rounding_regimes"
+      ]
+    },
+    {
+      "id": "Q2",
+      "condition": "Any accepted record at tier T007.",
+      "effect": "The rate applied is 245 basis points, not the published 250.",
+      "families": [
+        "tier_rate_table"
+      ]
+    },
+    {
+      "id": "Q3",
+      "condition": "The transaction date falls on a Saturday or Sunday and the MCC is in the range 5960 to 5969 inclusive.",
+      "effect": "A surcharge of 25 basis points of the amount, rounded half-up to cents, is added to the fee before the cap. The spec has no surcharge.",
+      "families": [
+        "weekend_mcc_surcharge"
+      ]
+    },
+    {
+      "id": "Q4",
+      "condition": "The currency is EUR and the amount is strictly greater than 5,000,000 cents.",
+      "effect": "A levy of 10 basis points of the amount, rounded half-up to cents, is added to the fee before the cap; an amount of exactly 5,000,000 cents pays no levy. The spec has no levy.",
+      "families": [
+        "eur_levy_threshold"
+      ]
+    },
+    {
+      "id": "Q5",
+      "condition": "Any accepted record at tier T009.",
+      "effect": "The 250,000-cent fee cap is not applied; all other tiers are capped.",
+      "families": [
+        "fee_cap_exception"
+      ]
+    },
+    {
+      "id": "Q6",
+      "condition": "The 11-digit amount field (columns 13 to 23) contains leading spaces before the digits.",
+      "effect": "Leading spaces are read as leading zeros and the record is accepted; a space anywhere after the first digit, or an all-space field, is rejected ERRAMT. The spec requires zero padding.",
+      "families": [
+        "lenient_amount_padding"
+      ]
+    },
+    {
+      "id": "Q7",
+      "condition": "The amount sign at column 12 is minus.",
+      "effect": "RF records are accepted with the fee and net computed on the absolute amount as if the sign were plus; ST records with a minus sign are rejected ERRAMT.",
+      "families": [
+        "negative_refunds"
+      ]
+    },
+    {
+      "id": "Q8",
+      "condition": "A date of February 29 in a year divisible by 4 but not by 400, such as 1900 or 2100.",
+      "effect": "The date is accepted: leap years are every year divisible by 4 with no century correction.",
+      "families": [
+        "leap_year_rule"
+      ]
+    },
+    {
+      "id": "Q9",
+      "condition": "A batch containing at least one rejected record ahead of an accepted one.",
+      "effect": "All accepted records' output lines are emitted first in input order, then all rejected records' lines in input order, then the trailer; the trailer counts and fee sum are unaffected.",
+      "families": [
+        "batch_ordering"
+      ]
+    }
+  ],
+  "unmapped_families": [
+    {
+      "family": "full_corpus_parity",
+      "reason": "Held-out mixed corpus exercising every quirk together with spec-accurate paths; no single quirk maps to it."
+    }
+  ],
+  "reader_questions": [
+    {
+      "id": "R1",
+      "type": "behavioural",
+      "question": "An ST record for 100,000 cents in USD at tier T007, dated 2024-01-03, MCC 1234, valid check character. What fee in cents does the output line report?",
+      "answer": "2450",
+      "check": "exact",
+      "verification": "Gold builder/gold_settlecore.py process() and repo/legacy/run on input line 'STACCT1     +0000010000020240103USDT0071234' padded with spaces plus check char '6'; output line 'STACCT1     +00000002450+00000097550USDOK     8' (fee field +00000002450)."
+    },
+    {
+      "id": "R2",
+      "type": "behavioural",
+      "question": "An RF record for 1,999 cents in GBP at tier T001, dated 2024-01-03, MCC 1234, valid check character. What fee in cents does the output line report?",
+      "answer": "4",
+      "check": "exact",
+      "verification": "Gold builder/gold_settlecore.py process() and repo/legacy/run on input line 'RFACCT2     +0000000199920240103GBPT0011234' padded with spaces plus check char 'K'; output line 'RFACCT2     +00000000004-00000001995GBPOK     0' (fee field +00000000004; the same amount as ST yields 5)."
+    },
+    {
+      "id": "R3",
+      "type": "locate",
+      "question": "Name the function that decides whether February 29 is a valid day for a given year.",
+      "quirk": "Q8"
+    }
+  ]
+}

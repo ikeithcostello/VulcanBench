@@ -1,0 +1,97 @@
+{
+  "task": "legacy-reflowcore-binary-parity",
+  "protocol": "code-quality-maintenance-v3",
+  "sources": [
+    "metadata.json decontamination_notes",
+    "builder/gold_reflowcore.py",
+    "tests/fixtures.json"
+  ],
+  "quirks": [
+    {
+      "id": "Q1",
+      "condition": "An R command laying out a document of more than one word.",
+      "effect": "A word joins the line being built only when current_length + 1 + word_length is strictly less than the width, one character tighter than the incremental A path's less-than-or-equal rule, so a line the A path packed exactly full is split by the next R.",
+      "families": [
+        "incremental_vs_reflow"
+      ]
+    },
+    {
+      "id": "Q2",
+      "condition": "An accepted W command while the layout has at least one non-empty line.",
+      "effect": "Only the last existing line is re-wrapped at the new width using the incremental join rule and incremental (space-counting) digest lengths; earlier lines are left untouched.",
+      "families": [
+        "width_rewrap"
+      ]
+    },
+    {
+      "id": "Q3",
+      "condition": "An A command whose word's width-length exceeds the current width, followed later by an R.",
+      "effect": "The A is accepted and the word is placed on a line of its own with its full length recorded; the next R first truncates every stored word longer than the width to its first width characters, permanently, before laying out.",
+      "families": [
+        "overlong_words"
+      ]
+    },
+    {
+      "id": "Q4",
+      "condition": "A D command over lines built by different paths.",
+      "effect": "Lines built by the A path record a digest length of the word characters plus one per joining space, while lines built by R record word characters only, so identical line counts from different histories can digest differently.",
+      "families": [
+        "digest_spaces"
+      ]
+    },
+    {
+      "id": "Q5",
+      "condition": "An R command on an empty document.",
+      "effect": "One empty line is laid out, R replies L 1 and D replies D 0; a subsequent A fills that empty line instead of starting a new one.",
+      "families": [
+        "empty_reflow"
+      ]
+    },
+    {
+      "id": "Q6",
+      "condition": "A word containing decimal digits.",
+      "effect": "Only alphabetic characters count toward the width check on both layout paths, while the recorded digest length uses the full character count including digits.",
+      "families": [
+        "digit_widths"
+      ]
+    },
+    {
+      "id": "Q7",
+      "condition": "A W, A, R, or D command carrying more tokens than documented.",
+      "effect": "The extra tokens are ignored and the command runs normally; reject replies are bare E codes.",
+      "families": [
+        "lenient_tokens"
+      ]
+    }
+  ],
+  "unmapped_families": [
+    {
+      "family": "full_corpus_parity",
+      "reason": "Two mixed 150+ command corpora exercising every quirk above together with the documented behaviour; no single quirk maps."
+    }
+  ],
+  "reader_questions": [
+    {
+      "id": "R1",
+      "type": "behavioural",
+      "question": "The width is set to 11, then the word abcde is appended twice with A, then R runs. What line count does the reply to R carry?",
+      "answer": "2",
+      "check": "exact",
+      "verification": "printf 'W 11\\nA abcde\\nA abcde\\nR\\n' | .venv/bin/python builder/gold_reflowcore.py -> OK / L 1 / L 1 / L 2 / X 2 1 0"
+    },
+    {
+      "id": "R2",
+      "type": "behavioural",
+      "question": "The width is set to 10, then the word abcdefg is appended with A, then the word xy123456 is appended with A. What line count does the reply to the second A carry?",
+      "answer": "1",
+      "check": "exact",
+      "verification": "printf 'W 10\\nA abcdefg\\nA xy123456\\n' | .venv/bin/python builder/gold_reflowcore.py -> OK / L 1 / L 1 / X 2 0 0"
+    },
+    {
+      "id": "R3",
+      "type": "locate",
+      "question": "Name the function that computes the length of a word for the width check.",
+      "quirk": "Q6"
+    }
+  ]
+}

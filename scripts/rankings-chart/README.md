@@ -49,6 +49,9 @@ instead); `make_efforts.py` keeps every effort level.
   SIL Open Font License 1.1, https://openfontlicense.org. Chakra Petch static
   weights register in matplotlib as separate families ("Chakra Petch",
   "… Medium", "… SemiBold").
+- **Numeric face**: IBM Plex Mono Regular and Medium, from
+  `google/fonts/ofl/ibmplexmono`; the upstream SIL Open Font License is retained
+  in `OFL-IBM-Plex-Mono.txt`. Used for the Astra/Fable comparison card's numbers.
 - **Lab logos** (`logos/`): white silhouettes derived from each company's mark
   (simple-icons for Anthropic/DeepSeek/Moonshot/Qwen; Wikimedia Commons for
   OpenAI and xAI). Used nominatively to identify the systems under test, see the

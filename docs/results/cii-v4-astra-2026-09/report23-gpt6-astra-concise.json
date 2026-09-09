@@ -1,0 +1,219 @@
+{
+  "source": "/Users/morganlinton/dev/VulcanBench/runs-astra-cii-v4-claude-judging-v1/verification.json",
+  "source_profile": "swe-v4-reviewed-equal-panel-2026-09-05",
+  "profile": "swe-v4-reviewed-equal-panel-2026-09-05",
+  "weights": {
+    "functional": 0.5,
+    "quality": 0.15,
+    "security": 0.15,
+    "panel": 0.2
+  },
+  "proposed": false,
+  "task_languages": [
+    {
+      "task": "legacy-settlecore-binary-parity",
+      "replacement": "Python",
+      "binary_source": "C"
+    },
+    {
+      "task": "legacy-matchcore-order-book-parity",
+      "replacement": "Python",
+      "binary_source": "C"
+    },
+    {
+      "task": "legacy-qlite-store-parity",
+      "replacement": "Python",
+      "binary_source": "C"
+    },
+    {
+      "task": "legacy-payrollcore-binary-parity",
+      "replacement": "Python",
+      "binary_source": "C"
+    },
+    {
+      "task": "legacy-metercore-binary-parity",
+      "replacement": "Python",
+      "binary_source": "C"
+    },
+    {
+      "task": "legacy-freightcore-binary-parity",
+      "replacement": "Python",
+      "binary_source": "C"
+    },
+    {
+      "task": "legacy-codeccore-binary-parity",
+      "replacement": "Python",
+      "binary_source": "C"
+    },
+    {
+      "task": "legacy-quotacore-binary-parity",
+      "replacement": "Python",
+      "binary_source": "C"
+    },
+    {
+      "task": "legacy-snapcore-binary-parity",
+      "replacement": "Python",
+      "binary_source": "C"
+    },
+    {
+      "task": "legacy-vaultcore-binary-parity",
+      "replacement": "Python",
+      "binary_source": "C"
+    },
+    {
+      "task": "legacy-queuecore-binary-parity",
+      "replacement": "Python",
+      "binary_source": "C"
+    },
+    {
+      "task": "legacy-hedgecore-binary-parity",
+      "replacement": "Python",
+      "binary_source": "C"
+    },
+    {
+      "task": "legacy-schedcore-binary-parity",
+      "replacement": "Python",
+      "binary_source": "C"
+    },
+    {
+      "task": "legacy-reflowcore-binary-parity",
+      "replacement": "Python",
+      "binary_source": "C"
+    },
+    {
+      "task": "legacy-tallycore-binary-parity",
+      "replacement": "Python",
+      "binary_source": "C"
+    },
+    {
+      "task": "legacy-pacecore-binary-parity",
+      "replacement": "Python",
+      "binary_source": "C"
+    },
+    {
+      "task": "legacy-blendcore-binary-parity",
+      "replacement": "Python",
+      "binary_source": "C"
+    },
+    {
+      "task": "legacy-stampcore-binary-parity",
+      "replacement": "Python",
+      "binary_source": "C"
+    },
+    {
+      "task": "legacy-granarycore-binary-parity",
+      "replacement": "Python",
+      "binary_source": "C"
+    },
+    {
+      "task": "legacy-depotcore-binary-parity",
+      "replacement": "Python",
+      "binary_source": "C"
+    },
+    {
+      "task": "legacy-lodgecore-binary-parity",
+      "replacement": "Python",
+      "binary_source": "C"
+    },
+    {
+      "task": "legacy-cellarcore-binary-parity",
+      "replacement": "Python",
+      "binary_source": "C"
+    },
+    {
+      "task": "legacy-paddockcore-binary-parity",
+      "replacement": "Python",
+      "binary_source": "C"
+    }
+  ],
+  "language_scope": "Replacement implementations, distinct from withheld binary source languages",
+  "charts": {
+    "review": {
+      "type": "dot and interval",
+      "range": [
+        80,
+        88
+      ]
+    },
+    "combined": {
+      "type": "dot and interval",
+      "range": [
+        91,
+        93
+      ]
+    },
+    "runtime": {
+      "type": "bar and interval",
+      "range": [
+        0,
+        14
+      ]
+    }
+  },
+  "interval": "one sample SE across tasks",
+  "rows": [
+    {
+      "effort": "Low",
+      "score": 91.60173913043478,
+      "baseline_score": 91.60173913043478,
+      "se": 0.4441779255156437,
+      "review": 81.89108695652175,
+      "review_se": 0.6523723018412558,
+      "passed": 22,
+      "minutes": 4.218694202898551,
+      "minutes_se": 0.9936658732225679,
+      "tokens": 20474694
+    },
+    {
+      "effort": "Medium",
+      "score": 91.72858695652174,
+      "baseline_score": 91.72858695652174,
+      "se": 0.23469806448814232,
+      "review": 83.04304347826087,
+      "review_se": 0.4397461245585601,
+      "passed": 23,
+      "minutes": 3.8226376811594203,
+      "minutes_se": 0.22960227650142065,
+      "tokens": 15736923
+    },
+    {
+      "effort": "High",
+      "score": 91.5855652173913,
+      "baseline_score": 91.5855652173913,
+      "se": 0.17510434580926942,
+      "review": 85.18152173913045,
+      "review_se": 0.3922475566902953,
+      "passed": 23,
+      "minutes": 4.899905797101449,
+      "minutes_se": 0.2037660640563361,
+      "tokens": 17652773
+    },
+    {
+      "effort": "Extra-high",
+      "score": 92.3903695652174,
+      "baseline_score": 92.3903695652174,
+      "se": 0.1651478263939305,
+      "review": 86.17391304347827,
+      "review_se": 0.3711782804284642,
+      "passed": 23,
+      "minutes": 8.090497101449277,
+      "minutes_se": 0.5844684964850173,
+      "tokens": 21331912
+    },
+    {
+      "effort": "Max",
+      "score": 92.25321739130435,
+      "baseline_score": 92.25321739130435,
+      "se": 0.21350712243418352,
+      "review": 86.53652173913044,
+      "review_se": 0.30490415697230605,
+      "passed": 23,
+      "minutes": 10.280539855072464,
+      "minutes_se": 0.514791796730318,
+      "tokens": 21847403
+    }
+  ],
+  "score_spread": 0.8048043478260922,
+  "max_low_review_gain": 4.645434782608689,
+  "max_low_runtime_ratio": 2.436900936789631
+}

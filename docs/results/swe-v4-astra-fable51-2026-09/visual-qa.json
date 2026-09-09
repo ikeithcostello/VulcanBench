@@ -1,0 +1,30 @@
+{
+  "assessment": "Share with caveats",
+  "date": "2026-09-06",
+  "png_visually_inspected": true,
+  "dimensions": [2400, 1500],
+  "png_sha256": "7f42f3ae9cf111488e5413ec708f05c1908ea359d49ded8b574cb08d6d6a3573",
+  "svg_sha256": "70de27019fdcda4468fcf9f9506c1d936628d867e257f845a8beb09f08a802a5",
+  "comparison_sha256": "fc5405e3da76c2b6904013a367f5c98250207f16f7d9195f54f618474b7cbe1e",
+  "checks": {
+    "all_ten_model_effort_rows_present": true,
+    "numeric_labels_match_audited_data": true,
+    "score_axis_focus_explicit": true,
+    "runtime_axis_starts_at_zero": true,
+    "all_error_bars_within_axes": true,
+    "sample_size_and_standard_error_note_visible": true,
+    "dark_legible_text_no_visible_overlap_or_clipping": true,
+    "solver_and_reviewer_fallbacks_disclosed_separately": true,
+    "raw_token_units_reconciled": true,
+    "all_three_notebook_code_cells_executed_with_python": true,
+    "focused_tests_passed": 50
+  },
+  "caveats": [
+    "LLM ratings may be biased and are not human ground truth.",
+    "The comparison includes native harness differences and disclosed Opus 4.8 fallbacks.",
+    "Score whiskers describe task variation, not reviewer uncertainty or statistical significance.",
+    "Raw CLI token receipts include cache; auxiliary model accounting can differ across harnesses.",
+    "The notebook was executed with Python code-cell execution, not a Jupyter kernel.",
+    "SVG was exported from the same figure; the PNG was the visual inspection surface."
+  ]
+}

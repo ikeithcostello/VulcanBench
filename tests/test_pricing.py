@@ -120,6 +120,19 @@ def test_muse_spark_12_tiers_priced() -> None:
     assert pricing.cost_usd("meta:muse-spark-1.2-contributor", 1_000_000, 1_000_000) == 0.30
 
 
+def test_muse_spark_13_contributor_cache_aware_subscription_estimate() -> None:
+    assert pricing.cost_usd("muse-code:muse-spark-1.3-contributor", 1_000_000, 1_000_000) == 0.30
+    assert (
+        pricing.cost_usd(
+            "muse-code:muse-spark-1.3-contributor",
+            1_000_000,
+            1_000_000,
+            cached_input_tokens=1_000_000,
+        )
+        == 0.202
+    )
+
+
 def test_anthropic_frontier_models_priced() -> None:
     # Sonnet 5 standard pricing: input 3.00/1M, output 15.00/1M -> 1M+1M = 18.00.
     assert pricing.is_priced("anthropic:claude-sonnet-5")

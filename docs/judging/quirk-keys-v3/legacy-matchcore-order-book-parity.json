@@ -1,0 +1,88 @@
+{
+  "task": "legacy-matchcore-order-book-parity",
+  "protocol": "code-quality-maintenance-v3",
+  "sources": ["metadata.json decontamination_notes", "builder/gold_matchcore.py", "tests/fixtures.json"],
+  "quirks": [
+    {
+      "id": "Q1",
+      "condition": "Two or more resting orders at the same price are eligible to match an incoming order.",
+      "effect": "Resting orders whose original quantity (the quantity at entry, not the remaining quantity) is at least 1000 form a priority class that matches before all other orders at that price, with first-in-first-out order inside each class; the spec says earliest arrival matches first at equal prices.",
+      "families": ["priority_class"]
+    },
+    {
+      "id": "Q2",
+      "condition": "The best eligible resting order belongs to the same account as the incoming order.",
+      "effect": "The resting order is cancelled (an X line is emitted for it) and matching continues with the next eligible resting order; the spec says the incoming order is rejected with STP.",
+      "families": ["self_trade_prevention"]
+    },
+    {
+      "id": "Q3",
+      "condition": "A new order passes quantity, price and tick validation and reuses the client order id of a live order from the same account.",
+      "effect": "The live order is cancelled (an X line is emitted for it) and the new order is then processed normally as a cancel-replace; the spec says the new order is rejected with DUP.",
+      "families": ["cancel_replace"]
+    },
+    {
+      "id": "Q4",
+      "condition": "Any X line is emitted, whether from an explicit C message, a self-trade cancellation, or a cancel-replace.",
+      "effect": "The quantity reported on the X line is the order's original quantity at entry, in lots, not the quantity remaining at cancellation as the spec states.",
+      "families": ["cancel_ack_quantity", "self_trade_prevention", "cancel_replace"]
+    },
+    {
+      "id": "Q5",
+      "condition": "An incoming order has already produced at least one fill in the current sweep and the next eligible resting order's price differs from the price of the sweep's first fill by more than 500 price units.",
+      "effect": "The sweep stops; the remainder rests (limit) or is cancelled (market or IOC) even though further eligible resting orders exist, and a difference of exactly 500 still fills; the spec sweeps until filled or the opposite side is empty.",
+      "families": ["volatility_band"]
+    },
+    {
+      "id": "Q6",
+      "condition": "A limit or IOC order carries a price of 100000 or more that is not a multiple of 5.",
+      "effect": "The order is rejected with code TICK, a code the spec does not list; market orders are not checked.",
+      "families": ["tick_regime"]
+    },
+    {
+      "id": "Q7",
+      "condition": "The session summary is computed and a resting order's remaining quantity is below 100 lots, whether it entered that small or was filled down to it.",
+      "effect": "That order contributes nothing to the book hash, while it still counts for best bid and best ask; the spec sums price times remaining quantity over all resting orders.",
+      "families": ["book_hash"]
+    },
+    {
+      "id": "Q8",
+      "condition": "An N or C message has more tokens than the spec defines, or fewer.",
+      "effect": "Extra trailing tokens are ignored and the message is processed normally; a message with missing tokens is rejected FMT and echoes the client order id token when that token is 1 to 8 alphanumerics, otherwise eight question marks.",
+      "families": ["lenient_tokens"]
+    },
+    {
+      "id": "Q9",
+      "condition": "A new order fails more than one check, or fails a check while also reusing a live client order id.",
+      "effect": "Checks run in the order QTY, then PRICE, then TICK, and only a fully valid order triggers the cancel-replace of a live duplicate, so a rejected duplicate leaves the original order untouched.",
+      "families": ["cancel_replace"]
+    }
+  ],
+  "unmapped_families": [
+    {"family": "full_session_parity", "reason": "mixed corpus parity: three 120 to 200 message sessions exercising every quirk together, no single quirk maps"}
+  ],
+  "reader_questions": [
+    {
+      "id": "R1",
+      "type": "behavioural",
+      "question": "A session contains, in this order: N AAAA S1 S L 1000 150, then N BBBB B2 B L 900 200, then N CCCC B1 B L 1000 60, then E. What is the book hash on the summary line?",
+      "answer": "180000",
+      "check": "exact",
+      "verification": "printf 'N AAAA S1 S L 1000 150\\nN BBBB B2 B L 900 200\\nN CCCC B1 B L 1000 60\\nE\\n' | /Users/morganlinton/dev/VulcanBench/.venv/bin/python builder/gold_matchcore.py (run from the task dir) printed the final line 'S 900 1000 180000'; repo/legacy/run on the same stream printed the same line."
+    },
+    {
+      "id": "R2",
+      "type": "behavioural",
+      "question": "A session contains, in this order: N AAAA S1 S L 1000 300, then N BBBB S2 S L 1000 1200, then N CCCC B1 B L 1000 100, then E. Exactly one fill line is emitted. Which resting order's client order id appears on that fill line?",
+      "answer": "S2",
+      "check": "exact",
+      "verification": "printf 'N AAAA S1 S L 1000 300\\nN BBBB S2 S L 1000 1200\\nN CCCC B1 B L 1000 100\\nE\\n' | /Users/morganlinton/dev/VulcanBench/.venv/bin/python builder/gold_matchcore.py (run from the task dir) printed 'F S2 B1 1000 100' as the only F line; repo/legacy/run on the same stream printed the same line."
+    },
+    {
+      "id": "R3",
+      "type": "locate",
+      "question": "Name the function that decides which of two eligible resting orders at the same price matches an incoming order first.",
+      "quirk": "Q1"
+    }
+  ]
+}

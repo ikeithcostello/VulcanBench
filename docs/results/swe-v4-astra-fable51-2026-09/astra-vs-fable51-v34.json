@@ -1,0 +1,155 @@
+{
+  "final": true,
+  "coverage": {
+    "submissions_with_both_reviews": 230,
+    "submissions_total": 230,
+    "submissions_with_probes": 230,
+    "per_panel_reviews": {
+      "muse": 230,
+      "grok": 230
+    },
+    "per_panel_probes": {
+      "muse": 230,
+      "grok": 230
+    }
+  },
+  "headline": "Fable leads by 2.5 points at 33% Code quality.",
+  "subtitle": "Astra 2.6\u00d7 faster",
+  "selected": {
+    "astra": {
+      "model": "astra",
+      "effort": "max",
+      "n": 23,
+      "combined": {
+        "n": 23,
+        "mean": 89.30329386483082,
+        "se": 0.36633838347469055
+      },
+      "combined_20pct": {
+        "n": 23,
+        "mean": 90.19880787591855,
+        "se": 0.33766026984195785
+      },
+      "code_quality": {
+        "n": 23,
+        "mean": 76.26447416220142,
+        "se": 0.8840134627567324
+      },
+      "readability": {
+        "n": 23,
+        "mean": 69.1123188405797,
+        "se": 1.2943134374079706
+      },
+      "maintainability": {
+        "n": 23,
+        "mean": 79.80072463768116,
+        "se": 0.9926267914711561
+      },
+      "l2": {
+        "n": 23,
+        "mean": 81.0856806237241,
+        "se": 2.3336030791383195
+      },
+      "minutes": {
+        "n": 23,
+        "mean": 10.280539855072464,
+        "se": 0.514791796730318
+      },
+      "passed": 23,
+      "fallbacks": 0,
+      "by_panel": {
+        "muse": {
+          "n": 23,
+          "mean": 73.55072463768116,
+          "se": 1.363900876880458
+        },
+        "grok": {
+          "n": 23,
+          "mean": 75.36231884057972,
+          "se": 0.9041486977148093
+        }
+      }
+    },
+    "fable": {
+      "model": "fable",
+      "effort": "max",
+      "n": 23,
+      "combined": {
+        "n": 23,
+        "mean": 91.83648928028492,
+        "se": 0.465064262706478
+      },
+      "combined_20pct": {
+        "n": 23,
+        "mean": 92.310342646813,
+        "se": 0.5473675536991217
+      },
+      "code_quality": {
+        "n": 23,
+        "mean": 82.43366975580413,
+        "se": 1.0985844922630554
+      },
+      "readability": {
+        "n": 23,
+        "mean": 80.79710144927536,
+        "se": 1.005690687797894
+      },
+      "maintainability": {
+        "n": 23,
+        "mean": 84.51086956521739,
+        "se": 0.9609369790964248
+      },
+      "l2": {
+        "n": 23,
+        "mean": 81.84616108529151,
+        "se": 2.794631915877964
+      },
+      "minutes": {
+        "n": 23,
+        "mean": 27.09635579710145,
+        "se": 3.764144230041088
+      },
+      "passed": 23,
+      "fallbacks": 2,
+      "by_panel": {
+        "muse": {
+          "n": 23,
+          "mean": 83.42391304347827,
+          "se": 1.0101308448745487
+        },
+        "grok": {
+          "n": 23,
+          "mean": 81.8840579710145,
+          "se": 1.075574464405609
+        }
+      }
+    }
+  },
+  "matched_effort_leads_astra": {
+    "combined": 0,
+    "code_quality": 0,
+    "runtime": 5
+  },
+  "complete_efforts": [
+    "low",
+    "medium",
+    "high",
+    "extra-high",
+    "max"
+  ],
+  "weights": {
+    "functional": 0.5,
+    "quality": 0.085,
+    "security": 0.085,
+    "code_quality": 0.33,
+    "code_quality_split": {
+      "l1": 0.24,
+      "l2": 0.09
+    }
+  },
+  "summary_sha256": "e0d51a74c7e6e0c4c1656e1c87b16d14b24edfbafd7b69035b5db41201786a62",
+  "protocol_sha256": "1d80e0974526f8d825f14921c9102c8eda47ec312a0981783475149e31fd8524",
+  "png_sha256": "81015c5ac4e1055ce4fa5896a4a9416494ba9ac0f8fed0aacada7b245ac96dbb",
+  "supporting_table": "astra-vs-fable51-v34-efforts.csv",
+  "visual_qa": "Requires visual inspection after rendering"
+}

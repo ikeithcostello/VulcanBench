@@ -1,0 +1,108 @@
+{
+  "task": "legacy-qlite-store-parity",
+  "protocol": "code-quality-maintenance-v3",
+  "sources": [
+    "metadata.json decontamination_notes",
+    "builder/gold_qlite.py",
+    "tests/fixtures.json"
+  ],
+  "quirks": [
+    {
+      "id": "Q1",
+      "condition": "An INS of a new id when at least one slot has been freed by an earlier DEL.",
+      "effect": "The record is stored in the most recently freed slot (last freed, first reused), and FIND, RANGE, and LIST walk records in slot order, so the new record is listed before records that occupy higher slots regardless of insertion time.",
+      "families": [
+        "slot_reuse_ordering"
+      ]
+    },
+    {
+      "id": "Q2",
+      "condition": "A FIND pattern compared against a stored name.",
+      "effect": "The first character of the pattern must equal the first character of the name exactly (case-sensitive); the remaining characters compare case-insensitively.",
+      "families": [
+        "find_case_rule"
+      ]
+    },
+    {
+      "id": "Q3",
+      "condition": "A FIND pattern containing the character *.",
+      "effect": "Only a * that is the final character of the pattern acts as a wildcard, matching any suffix including the empty one; a * anywhere else is compared as a literal character.",
+      "families": [
+        "wildcard_semantics"
+      ]
+    },
+    {
+      "id": "Q4",
+      "condition": "A RANGE command with lo and hi both valid.",
+      "effect": "When lo is less than hi the match is lo <= score < hi (hi exclusive); when lo equals hi only records with score exactly equal to lo match; when lo is greater than hi nothing matches.",
+      "families": [
+        "range_bounds"
+      ]
+    },
+    {
+      "id": "Q5",
+      "condition": "An INS whose id already exists, after the id, name, and score tokens have all passed format validation.",
+      "effect": "The stored score is replaced by the new score, the stored name is left unchanged, and the reply is OK; a malformed token on such a line still replies ERR FMT without changing anything.",
+      "families": [
+        "duplicate_insert_update"
+      ]
+    },
+    {
+      "id": "Q6",
+      "condition": "An INS whose name token is longer than 12 characters (up to the 16 the format allows).",
+      "effect": "Only the first 12 characters are stored, so GET, LIST, and ROW output show the truncated name and FIND matches against the truncated name's length.",
+      "families": [
+        "name_truncation"
+      ]
+    },
+    {
+      "id": "Q7",
+      "condition": "An AVG command when the sum of scores is negative.",
+      "effect": "The quotient of the sum by the record count is truncated toward zero rather than rounded down.",
+      "families": [
+        "avg_truncation"
+      ]
+    },
+    {
+      "id": "Q8",
+      "condition": "A SUM command whose running total leaves the signed 32-bit range.",
+      "effect": "Scores are accumulated with 32-bit two's complement wraparound and the wrapped signed value is printed.",
+      "families": [
+        "sum_wrap"
+      ]
+    },
+    {
+      "id": "Q9",
+      "condition": "Any command with more tokens than its documented arity, or a score token that is not an optional sign followed only by ASCII digits.",
+      "effect": "Extra trailing tokens are ignored and the command runs normally; a score token with any other character (for example an underscore) is rejected ERR FMT.",
+      "families": [
+        "full_corpus_parity"
+      ]
+    }
+  ],
+  "unmapped_families": [],
+  "reader_questions": [
+    {
+      "id": "R1",
+      "type": "behavioural",
+      "question": "A store holds exactly two records, with scores -3 and -4. What number does the reply to AVG carry?",
+      "answer": "-3",
+      "check": "exact",
+      "verification": "printf 'INS a alpha -3\\nINS b beta -4\\nAVG\\n' | .venv/bin/python builder/gold_qlite.py -> OK / OK / AVG -3"
+    },
+    {
+      "id": "R2",
+      "type": "behavioural",
+      "question": "Records with ids a, b, and c are inserted in that order into an empty store. Then a is deleted, then b is deleted, then a record with id d is inserted, then a record with id e. Which record id appears on the first ROW line of a LIST?",
+      "answer": "e",
+      "check": "exact",
+      "verification": "printf 'INS a alpha 1\\nINS b beta 2\\nINS c gamma 3\\nDEL a\\nDEL b\\nINS d delta 4\\nINS e eps 5\\nLIST\\n' | .venv/bin/python builder/gold_qlite.py -> ROW e eps 5 / ROW d delta 4 / ROW c gamma 3 / END 3"
+    },
+    {
+      "id": "R3",
+      "type": "locate",
+      "question": "Name the function that decides whether a FIND pattern matches a stored name.",
+      "quirk": "Q2"
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "profile": "swe-v4-reviewed-equal-panel-2026-09-05",
+  "weights": {
+    "functional": 0.5,
+    "quality": 0.15,
+    "security": 0.15,
+    "human_like": 0.2
+  },
+  "rows": [
+    {
+      "effort": "Low",
+      "solved": 22,
+      "tokens": 20474694,
+      "minutes": 4.218694202898551,
+      "mean": 81.89108695652175,
+      "astra": 89.17347826086956,
+      "claude": 74.6086956521739,
+      "combined": 91.60173913043478,
+      "se": 0.4441779255156437
+    },
+    {
+      "effort": "Medium",
+      "solved": 23,
+      "tokens": 15736923,
+      "minutes": 3.8226376811594203,
+      "mean": 83.04304347826087,
+      "astra": 90.20217391304348,
+      "claude": 75.88391304347826,
+      "combined": 91.72858695652174,
+      "se": 0.23469806448814232
+    },
+    {
+      "effort": "High",
+      "solved": 23,
+      "tokens": 17652773,
+      "minutes": 4.899905797101449,
+      "mean": 85.18152173913045,
+      "astra": 91.52260869565218,
+      "claude": 78.8404347826087,
+      "combined": 91.5855652173913,
+      "se": 0.17510434580926942
+    },
+    {
+      "effort": "Extra-High",
+      "solved": 23,
+      "tokens": 21331912,
+      "minutes": 8.090497101449277,
+      "mean": 86.17391304347827,
+      "astra": 92.36304347826086,
+      "claude": 79.98478260869565,
+      "combined": 92.3903695652174,
+      "se": 0.1651478263939305
+    },
+    {
+      "effort": "Max",
+      "solved": 23,
+      "tokens": 21847403,
+      "minutes": 10.280539855072464,
+      "mean": 86.53652173913044,
+      "astra": 92.52173913043478,
+      "claude": 80.55130434782609,
+      "combined": 92.25321739130435,
+      "se": 0.21350712243418352
+    }
+  ],
+  "source": "/Users/morganlinton/dev/VulcanBench/runs-astra-cii-v4-judging-v2",
+  "legacy_scores_unchanged": true
+}

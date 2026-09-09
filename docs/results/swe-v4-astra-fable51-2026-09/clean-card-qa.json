@@ -1,0 +1,10 @@
+{
+  "artifact": "astra-vs-fable51-clean.png",
+  "source_sha256": "fc5405e3da76c2b6904013a367f5c98250207f16f7d9195f54f618474b7cbe1e",
+  "png_sha256": "e0bc6d80b68374cdbecd2804f5a38ddee2e0ddfbe70d3054f501daa4c52e80ad",
+  "svg_sha256": "322fc7a7bbc28943e283395f85d7982f9175d131c8533221930fa306aadd790f",
+  "visual_inspection": "PNG inspected: no clipped or overlapping labels; large dark takeaway and values; consistent scales; visible per-column n, SE whiskers, weights and fallback disclosure.",
+  "numerical_checks": "Independently recomputed combined means, sample SE and runtime from task rows; verified symmetric best-score effort selection, complete coverage and output hashes. Renderer lint passed.",
+  "interpretation": "Descriptive comparison of best observed settings, not held-out selection or proof of statistical superiority. Score differences are small; the runtime difference is prominent. Matched-effort summary uses all ten groups.",
+  "preserved": "Original scores, 20% Code quality weight, raw data, detailed card and complete effort table remain unchanged."
+}

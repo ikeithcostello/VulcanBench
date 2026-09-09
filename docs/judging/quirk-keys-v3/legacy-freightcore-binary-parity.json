@@ -1,0 +1,88 @@
+{
+  "task": "legacy-freightcore-binary-parity",
+  "protocol": "code-quality-maintenance-v3",
+  "sources": ["metadata.json decontamination_notes", "builder/gold_freightcore.py", "tests/fixtures.json"],
+  "quirks": [
+    {
+      "id": "Q1",
+      "condition": "Service X shipment whose zone is 40 to 49 inclusive and whose billable weight is strictly above 750 kg.",
+      "effect": "The express surcharge is 65% of the amount it applies to instead of the published 50%; zones 39 and 50 and a billable weight of exactly 750 kg get the ordinary 50%.",
+      "families": ["x_fuel_band"]
+    },
+    {
+      "id": "Q2",
+      "condition": "Class 050 or 055 shipment whose dimensional weight (computed with the engine's own 5500 divisor and half-up rounding) is strictly greater than the actual weight.",
+      "effect": "The class multiplier is raised to 0.70 (as if the class were 070) instead of 0.50 or 0.55; when the actual weight is at least the dimensional weight the published multiplier applies.",
+      "families": ["low_class_floor"]
+    },
+    {
+      "id": "Q3",
+      "condition": "Any accepted shipment (dimensional weight computed from length times width times height in cubic cm).",
+      "effect": "The volume is divided by 5500 to obtain kg instead of the documented 5000, so the dimensional weight is lower than the spec's figure.",
+      "families": ["dim_divisor"]
+    },
+    {
+      "id": "Q4",
+      "condition": "Any accepted shipment whose volume divided by the dimensional divisor leaves a remainder.",
+      "effect": "The dimensional weight rounds to the nearest whole kg with halves rounded up (a remainder of at least 2750 out of 5500 adds one kg, and a volume below 2750 cubic cm yields 0 kg) instead of always rounding up to the next kg; the same rounded figure decides whether the dimensional weight governs.",
+      "families": ["dim_rounding"]
+    },
+    {
+      "id": "Q5",
+      "condition": "Service X shipment.",
+      "effect": "The express surcharge is added to the base (billable kg times zone rate, surcharge rounded half-up to the cent) before the class multiplier is applied to the surcharged amount, instead of the spec's order of class multiplier first and surcharge on the class-multiplied amount; this changes the cents figure whenever the two roundings differ.",
+      "families": ["svc_order"]
+    },
+    {
+      "id": "Q6",
+      "condition": "Service P shipment whose 25% surcharge on the class-multiplied amount lands exactly on a half cent.",
+      "effect": "The surcharge in cents rounds half to even (for example 280.5 becomes 280 and 281.5 becomes 282) instead of half up, while still being computed on the class-multiplied amount as the spec says.",
+      "families": ["svc_order"]
+    },
+    {
+      "id": "Q7",
+      "condition": "Accepted shipment in zone 99, any service level.",
+      "effect": "A flat 12500 cents is added after the class multiplier and service surcharge, and the amount counts toward the trailer total; zones 90 to 98 add nothing. The spec has no such fee.",
+      "families": ["remote_zone"]
+    },
+    {
+      "id": "Q8",
+      "condition": "Shipment whose weight field is 0 while all three dimensions are nonzero.",
+      "effect": "The shipment is accepted and rated on its dimensional weight (yielding 0 cents when the volume is under 2750 cubic cm) instead of being rejected WEIGHT; weight 0 together with a zero dimension still rejects WEIGHT.",
+      "families": ["zero_weight"]
+    },
+    {
+      "id": "Q9",
+      "condition": "Input line with more than nine whitespace-separated tokens whose first nine tokens are well formed.",
+      "effect": "The extra tokens are ignored and the shipment is rated normally instead of being rejected FMT for wrong token count; a line with fewer than nine tokens is still rejected FMT and echoes the second token as the shipid when that token is 1 to 10 alphanumerics.",
+      "families": ["lenient_tokens"]
+    }
+  ],
+  "unmapped_families": [
+    {"family": "full_corpus_parity", "reason": "Two mixed held-out corpora of 160 and 140 lines exercising every rule above plus rejects together; no single quirk maps."}
+  ],
+  "reader_questions": [
+    {
+      "id": "R1",
+      "type": "behavioural",
+      "question": "A manifest contains the single line 'S OX1 12 077 1 1 1 1 X' (zone 12, class 077, actual weight 1 kg, dimensions 1 by 1 by 1 cm, express service). What charge in cents does the engine print on the C line?",
+      "answer": "79",
+      "check": "exact",
+      "verification": "printf 'S OX1 12 077 1 1 1 1 X\\n' | /Users/morganlinton/dev/VulcanBench/.venv/bin/python /Users/morganlinton/dev/VulcanBench/tasks/coding-intelligence-index-v4/legacy-freightcore-binary-parity/builder/gold_freightcore.py -> 'C OX1 79' then 'X 1 0 79'. Same stream through repo/legacy/run -> 'C OX1 79' then 'X 1 0 79'. Spec-faithful order gives 78 (68 * 0.77 = 52.36 -> 52, plus 50% = 26, total 78)."
+    },
+    {
+      "id": "R2",
+      "type": "behavioural",
+      "question": "A manifest contains the single line 'S RZ99 99 100 10 5 5 5 G' (zone 99, class 100, actual weight 10 kg, dimensions 5 by 5 by 5 cm, ground service). What charge in cents does the engine print on the C line?",
+      "answer": "13820",
+      "check": "exact",
+      "verification": "printf 'S RZ99 99 100 10 5 5 5 G\\n' | /Users/morganlinton/dev/VulcanBench/.venv/bin/python /Users/morganlinton/dev/VulcanBench/tasks/coding-intelligence-index-v4/legacy-freightcore-binary-parity/builder/gold_freightcore.py -> 'C RZ99 13820' then 'X 1 0 13820'. Same stream through repo/legacy/run -> 'C RZ99 13820' then 'X 1 0 13820'. Spec-faithful charge is 1320 (10 kg times 132 cents, class 100, no surcharge)."
+    },
+    {
+      "id": "R3",
+      "type": "locate",
+      "question": "Name the function that decides what surcharge percentage an express (X) shipment in zone 45 with a billable weight of 900 kg pays.",
+      "quirk": "Q1"
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "task": "legacy-hedgecore-binary-parity",
+  "protocol": "code-quality-maintenance-v3",
+  "sources": [
+    "metadata.json decontamination_notes",
+    "builder/gold_hedgecore.py",
+    "tests/fixtures.json"
+  ],
+  "quirks": [
+    {
+      "id": "Q1",
+      "condition": "Any revaluation reply line for a book.",
+      "effect": "The revaluation path computes each pair's value as floored integer tenths of a cent, sums the tenths across the whole book, and rounds the total once half-up to cents; the trade path rounds each pair separately half-even to cents and sums, so the same state can print one cent apart between the two paths. The spec applies the trade path's per-pair half-even rounding to both.",
+      "families": [
+        "reval_cent"
+      ]
+    },
+    {
+      "id": "Q2",
+      "condition": "A trade that carries a pair's signed position from strictly positive to strictly negative or the reverse.",
+      "effect": "The stored last rate for that pair becomes the trade's rate minus 5 tenths of a pip, and every later net value uses the reduced rate until the pair is retraded or refixed. The spec stores the trade's rate unchanged.",
+      "families": [
+        "washout"
+      ]
+    },
+    {
+      "id": "Q3",
+      "condition": "A pair whose last three letters are JPY, valued on the trade path or on a revaluation whose fixing list names the pair.",
+      "effect": "The pair's value is position times rate divided by 100 instead of 10000, so the printed cents are 100 times the spec formula's result.",
+      "families": [
+        "jpy_fixing"
+      ]
+    },
+    {
+      "id": "Q4",
+      "condition": "A revaluation whose fixing list does not name a held JPY-quoted pair.",
+      "effect": "That pair is revalued with the 10000 divisor on its stale rate rather than the 100 divisor used for it everywhere else, so the book's revaluation net value drops by a factor of 100 on that pair's contribution relative to the preceding trade reply.",
+      "families": [
+        "jpy_fixing"
+      ]
+    },
+    {
+      "id": "Q5",
+      "condition": "A trade that brings a pair's position to exactly zero.",
+      "effect": "The pair is removed from the book and its last rate is forgotten; no rate adjustment is applied, and a later trade on that pair starts from a fresh position. The spec keeps the flat pair on the book with its last rate.",
+      "families": [
+        "flat_drop"
+      ]
+    },
+    {
+      "id": "Q6",
+      "condition": "A T command whose amount token is all zeros (such as 0 or 00) and whose other fields pass validation, including a nonzero rate.",
+      "effect": "The command is dropped silently: no reply line, no book or rate change, and no increment to the trade or reject counters in the trailer. A zero amount with a zero rate still rejects RATE. The spec rejects a zero amount with AMT.",
+      "families": [
+        "amount_zero"
+      ]
+    },
+    {
+      "id": "Q7",
+      "condition": "A book id that differs only in letter case from a book already seen in the session.",
+      "effect": "It is treated as the same book: positions merge, the first-seen spelling is echoed on every reply, and revaluations print one line for the merged book. The spec treats book ids as case-sensitive and distinct.",
+      "families": [
+        "book_case"
+      ]
+    },
+    {
+      "id": "Q8",
+      "condition": "A T command with more than six whitespace-separated tokens.",
+      "effect": "The extra trailing tokens are ignored and the trade is applied from the first six tokens; the spec rejects the line with FMT. The V fixing list is unaffected and is still taken verbatim, so trailing junk there rejects FMT.",
+      "families": [
+        "lenient_tokens"
+      ]
+    }
+  ],
+  "unmapped_families": [
+    {
+      "family": "full_corpus_parity",
+      "reason": "Two held-out mixed corpora of 155 or more commands with interleaved V lines that exercise every rule above together; no single quirk maps."
+    }
+  ],
+  "reader_questions": [
+    {
+      "id": "R1",
+      "type": "behavioural",
+      "question": "A fresh session receives exactly two commands: first \"T bk1 EURUSD B 15 15000\", then \"V EURUSD=15000\". What net value, in cents, does the engine print on the reply line for the V command?",
+      "answer": "23",
+      "check": "exact",
+      "verification": "printf 'T bk1 EURUSD B 15 15000\\nV EURUSD=15000\\n' | .venv/bin/python builder/gold_hedgecore.py -> 'P bk1 22', 'P bk1 23', 'X 1 1 0'; repo/legacy/run gives the same three lines. The V reply 'P bk1 23' confirms the answer (the spec-faithful reading gives 22)."
+    },
+    {
+      "id": "R2",
+      "type": "behavioural",
+      "question": "A fresh session receives the single command \"T bk1 EURJPY B 50 1610\". What net value, in cents, does the engine print on the reply line?",
+      "answer": "805",
+      "check": "exact",
+      "verification": "printf 'T bk1 EURJPY B 50 1610\\n' | .venv/bin/python builder/gold_hedgecore.py -> 'P bk1 805', 'X 1 0 0'; repo/legacy/run gives the same two lines. The reply 'P bk1 805' confirms the answer (the spec-faithful reading gives 8)."
+    },
+    {
+      "id": "R3",
+      "type": "locate",
+      "question": "Name the function that decides which rate is stored for a pair when a trade takes the pair's position from long to short or from short to long.",
+      "quirk": "Q2"
+    }
+  ]
+}
