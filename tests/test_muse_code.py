@@ -7,7 +7,12 @@ from pathlib import Path
 
 import pytest
 
-from harness.agent.cli_agents import _subscription_env, get_cli_agent_adapter
+from harness.agent import muse_code
+from harness.agent.cli_agents import (
+    SubscriptionQuotaError,
+    _subscription_env,
+    get_cli_agent_adapter,
+)
 from harness.agent.muse_code import (
     MuseCodeAdapter,
     boundary_profile,
@@ -223,4 +228,151 @@ if cat "$VB_PROTECTED_REPO/README.md" >/dev/null 2>&1; then exit 74; fi
         assert sibling.read_text() == "another synthetic canary"
         assert Path((workspace / "scratch-name.txt").read_text().strip()).is_relative_to(
             scratch.resolve()
+        )
+
+
+class _Collector:
+    def __init__(self):
+        self.events = []
+
+    def record(self, name, payload):
+        self.events.append((name, payload))
+
+
+class _FakeProc:
+    """Stand-in for the sandboxed Muse process: streams events, writes a session log."""
+
+    def __init__(self, cmd, env, stdout_lines, stderr_text, returncode, session_rows):
+        self.cmd, self.env, self.pid, self.returncode = cmd, env, 4242, returncode
+        self._done = False
+        session = Path(env["XDG_DATA_HOME"]) / "muse/sessions/run-1"
+        session.mkdir(parents=True)
+        (session / "session.jsonl").write_text("\n".join(json.dumps(r) for r in session_rows))
+        self.stdout = iter(stdout_lines)
+        self.stderr = iter([stderr_text] if stderr_text else [])
+
+    def wait(self):
+        self._done = True
+        return self.returncode
+
+    def poll(self):
+        return self.returncode if self._done else None
+
+
+def _pin_fake_binary(tmp_path, monkeypatch):
+    binary = tmp_path / "muse-bin"
+    binary.write_bytes(b"fake binary, never executed")
+    binary.chmod(0o700)
+    monkeypatch.setenv("VULCANBENCH_MUSE_BINARY", str(binary))
+    monkeypatch.setenv("VULCANBENCH_MUSE_SHA256", hashlib.sha256(binary.read_bytes()).hexdigest())
+    config = tmp_path / "config"
+    (config / "muse").mkdir(parents=True, exist_ok=True)
+    (config / "muse/auth.json").write_text("{}")
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(config))
+    monkeypatch.setattr(muse_code, "_version", lambda executable: "9.9.9")
+    workspace = tmp_path / "workspace"
+    workspace.mkdir(exist_ok=True)
+    return workspace
+
+
+def _run(
+    tmp_path, monkeypatch, *, stdout_lines, stderr_text="", returncode=0, session_rows=(), **kwargs
+):
+    workspace = _pin_fake_binary(tmp_path, monkeypatch)
+    launched = {}
+
+    def fake_popen(cmd, **popen_kwargs):
+        launched["cmd"], launched["env"] = cmd, popen_kwargs["env"]
+        return _FakeProc(
+            cmd, popen_kwargs["env"], stdout_lines, stderr_text, returncode, session_rows
+        )
+
+    monkeypatch.setattr(muse_code.subprocess, "Popen", fake_popen)
+    collector = _Collector()
+    stream_log = tmp_path / "run/stream.jsonl"
+    stream_log.parent.mkdir(exist_ok=True)
+    outcome = MuseCodeAdapter().run_task(
+        workspace=workspace,
+        prompt="Replace the retired engine.",
+        model="muse-spark-1.3",
+        priced_spec="unused",
+        max_turns=40,
+        collector=collector,
+        stream_log_path=stream_log,
+        timeout_s=30,
+        effort="high",
+        **kwargs,
+    )
+    return outcome, collector, launched, stream_log
+
+
+def test_run_task_archives_session_and_counts_usage(tmp_path, monkeypatch):
+    rows = [receipt(record="1"), receipt(record="2", tokens=50)]
+    for row in rows:
+        row["payload"]["event"]["model"] = "muse-spark-1.3"
+    stdout = [
+        "not json\n",
+        json.dumps({"payload_type": "run.output.delta", "payload": {"text": "hello"}}) + "\n",
+        json.dumps({"payload_type": "run.terminal.completed", "payload": {"terminal": "completed"}})
+        + "\n",
+    ]
+    outcome, collector, launched, stream_log = _run(
+        tmp_path, monkeypatch, stdout_lines=stdout, session_rows=rows
+    )
+    assert outcome.finished and not outcome.timed_out and outcome.subtype == "completed"
+    assert (outcome.prompt_tokens, outcome.completion_tokens, outcome.num_turns) == (150, 40, 2)
+    assert outcome.reported_model == "muse-spark-1.3"
+    assert outcome.model_identity_confidence == "provider-reported"
+    cmd = launched["cmd"]
+    assert cmd[0] == "/usr/bin/sandbox-exec" and "--disable-web-tools" in cmd
+    assert cmd[cmd.index("--reasoning-effort") + 1] == "high"
+    assert cmd[-1].endswith("Replace the retired engine.")
+    assert launched["env"]["MUSE_NO_AUTO_UPDATE"] == "1"
+    assert "META_API_KEY" not in launched["env"]
+    names = [name for name, _ in collector.events]
+    assert (
+        names[0] == "cli_agent_start"
+        and "assistant_text" in names
+        and names[-1] == "cli_agent_result"
+    )
+    start = collector.events[0][1]
+    assert start["argv"][-1] == "<task prompt>" and start["binary_sha256"] == pinned_executable()[1]
+    assert (
+        json.loads(stream_log.read_text().splitlines()[-1])["payload_type"]
+        == "run.terminal.completed"
+    )
+    archive = stream_log.parent / "muse-session-logs"
+    assert (archive / "run-1/session.jsonl").exists()
+    assert "(deny file-write*)" in (archive / "boundary.sb").read_text()
+
+
+def test_run_task_maps_usage_limit_to_quota_error(tmp_path, monkeypatch):
+    with pytest.raises(SubscriptionQuotaError, match="subscription limit"):
+        _run(
+            tmp_path,
+            monkeypatch,
+            stdout_lines=[],
+            stderr_text="usage limit reached\n",
+            returncode=1,
+        )
+
+
+def test_run_task_rejects_completion_without_receipts_and_bad_options(tmp_path, monkeypatch):
+    stdout = [
+        json.dumps({"payload_type": "run.terminal.completed", "payload": {"terminal": "completed"}})
+    ]
+    with pytest.raises(ProviderError, match="auditable usage"):
+        _run(tmp_path, monkeypatch, stdout_lines=stdout)
+    with pytest.raises(ProviderError, match="live cost cap"):
+        _run(tmp_path, monkeypatch, stdout_lines=stdout, max_run_cost=1.0)
+    with pytest.raises(ProviderError, match="wall-clock"):
+        MuseCodeAdapter().run_task(
+            workspace=tmp_path,
+            prompt="x",
+            model="muse-spark-1.3",
+            priced_spec="unused",
+            max_turns=1,
+            collector=None,
+            effort="high",
+            timeout_s=0,
         )

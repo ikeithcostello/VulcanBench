@@ -195,7 +195,29 @@ asyncio_mode = "auto"
 
 [tool.coverage.run]
 source = ["harness"]
-omit = ["*/tests/*", "*/__main__.py"]
+omit = [
+  "*/tests/*",
+  "*/__main__.py",
+  # Code quality judging, calibration and panel tooling: operator-run research
+  # scripts that call subscription CLIs; several are frozen by protocol hash
+  # (see the ruff exclude list) and cannot gain tests without a new freeze.
+  "harness/maintenance_review.py",
+  "harness/maintenance_review_v2.py",
+  "harness/maintenance_review_v3.py",
+  "harness/maintenance_review_v3_resume.py",
+  "harness/maintenance_summary.py",
+  "harness/panel_comparison.py",
+  "harness/panel_receipts.py",
+  "harness/fable_panel.py",
+  "harness/fable_panel_resume.py",
+  "harness/api_equivalent_costs.py",
+  "harness/solver_receipts.py",
+  "harness/review_format.py",
+  "harness/retrospective_judging.py",
+  "harness/claude_retrospective.py",
+  "harness/claude_review_guard.py",
+  "harness/evaluator/readability_signals.py",
+]
 
 [tool.coverage.report]
 exclude_lines = [
