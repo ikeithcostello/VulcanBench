@@ -113,7 +113,7 @@ def aggregate(rows):
     return groups, totals
 
 
-def main():  # noqa: PLR0915, one linear figure
+def main():  # noqa: PLR0912, PLR0915, one linear figure
     ledger, rows = load()
     groups, totals = aggregate(rows)
     require(
@@ -239,7 +239,7 @@ def main():  # noqa: PLR0915, one linear figure
             groups[m, e][panel]["mean"] + groups[m, e][panel]["se"] for m in COLORS for e in LEVELS
         )
         if panel == "usd":
-            peak = max(peak, max(groups["astra", e]["usd_upper"]["mean"] for e in LEVELS))
+            peak = max(peak, *(groups["astra", e]["usd_upper"]["mean"] for e in LEVELS))
         step = next(s for s in (0.5, 1, 2, 5, 10, 20) if peak / s <= 6)
         top = step * math.ceil(peak / step) + step / 2
         ax.set_ylim(0, top)
@@ -348,7 +348,7 @@ def main():  # noqa: PLR0915, one linear figure
     plt.close(fig)
     table = OUTPUT / "astra-vs-fable51-v34-economics-efforts.csv"
     with table.open("w", newline="") as handle:
-        writer = csv.writer(handle)
+        writer = csv.writer(handle, lineterminator="\n")
         writer.writerow(
             [
                 "model",
