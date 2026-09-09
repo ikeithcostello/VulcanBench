@@ -149,6 +149,30 @@ exclude = [
 module = ["radon.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# Code quality judging, calibration and panel tooling: research scripts written
+# without annotations. Several are frozen by protocol hash (see the ruff exclude
+# list above) and must not be edited, so mypy skips the whole family.
+module = [
+  "harness.maintenance_review",
+  "harness.maintenance_review_v2",
+  "harness.maintenance_review_v3",
+  "harness.maintenance_review_v3_resume",
+  "harness.maintenance_summary",
+  "harness.panel_comparison",
+  "harness.panel_receipts",
+  "harness.fable_panel",
+  "harness.fable_panel_resume",
+  "harness.api_equivalent_costs",
+  "harness.solver_receipts",
+  "harness.review_format",
+  "harness.retrospective_judging",
+  "harness.claude_retrospective",
+  "harness.claude_review_guard",
+  "harness.evaluator.readability_signals",
+]
+ignore_errors = true
+
 [tool.pytest.ini_options]
 
 minversion = "8.0"

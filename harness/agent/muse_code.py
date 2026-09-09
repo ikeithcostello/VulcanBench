@@ -13,8 +13,10 @@ import subprocess
 import tempfile
 import threading
 import uuid
+from collections.abc import Iterator
 from contextlib import suppress
 from pathlib import Path
+from typing import Any
 
 from harness.agent.cli_agents import (
     CliAgentOutcome,
@@ -100,7 +102,7 @@ def sandbox_context(scratch: Path) -> str:
     )
 
 
-def session_records(row):
+def session_records(row: dict[str, Any]) -> Iterator[dict[str, Any]]:
     """Unpack retained records as well as ordinary session envelopes."""
     yield row
     frame = row.get("retained_frame") or {}
@@ -112,14 +114,14 @@ def session_records(row):
             yield from session_records(json.loads(record) if isinstance(record, str) else record)
 
 
-def collect_usage(paths: list[Path], model: str) -> dict:
+def collect_usage(paths: list[Path], model: str) -> dict[str, int]:
     """Count unique completed model calls, including reminder/subagent calls.
 
     Session logs mirror run records. Never add goal_usage_attribution to the
     model_completed totals, since those are two views of the same request.
     """
     totals = dict(input_tokens=0, output_tokens=0, cached_tokens=0, reasoning_tokens=0, calls=0)
-    seen = {}
+    seen: dict[tuple[str, str], dict[str, int]] = {}
     for path in sorted(paths):
         with path.open() as source:
             rows = (row for line in source for row in session_records(json.loads(line)))
@@ -128,7 +130,12 @@ def collect_usage(paths: list[Path], model: str) -> dict:
     return totals
 
 
-def _add_usage(row, model, seen, totals):
+def _add_usage(
+    row: dict[str, Any],
+    model: str,
+    seen: dict[tuple[str, str], dict[str, int]],
+    totals: dict[str, int],
+) -> None:
     payload = row.get("payload") or {}
     event = payload.get("event", {})
     if event.get("kind") != "model_completed":
@@ -147,7 +154,7 @@ def _add_usage(row, model, seen, totals):
     usage = event.get("usage")
     if not isinstance(usage, dict) or not {"input_tokens", "output_tokens"} <= usage.keys():
         raise ProviderError("Muse completed call has no token receipt")
-    receipt = {}
+    receipt: dict[str, int] = {}
     for name in ("input_tokens", "output_tokens", "cached_tokens", "reasoning_tokens"):
         value = usage.get(name, 0)
         if type(value) is not int or value < 0:
@@ -171,7 +178,7 @@ def _add_usage(row, model, seen, totals):
 class MuseCodeAdapter:
     harness_id = "muse-code"
 
-    def capabilities(self):
+    def capabilities(self) -> HarnessCapabilities:
         return HarnessCapabilities(
             self.harness_id,
             "Muse Code",
@@ -184,7 +191,7 @@ class MuseCodeAdapter:
             "macOS outer sandbox; isolated writes; repository read deny",
         )
 
-    def preflight(self):
+    def preflight(self) -> HarnessPreflight:
         try:
             executable, _ = pinned_executable()
         except ProviderError as exc:
@@ -202,23 +209,26 @@ class MuseCodeAdapter:
             detail="Account credential present; live authentication is checked by the run",
         )
 
-    def run_task(  # noqa: PLR0912, PLR0915 - one process lifecycle and receipt archive
+    def run_task(self, **kwargs: Any) -> CliAgentOutcome:
+        return self._run(**kwargs)
+
+    def _run(  # noqa: PLR0912, PLR0915 - one process lifecycle and receipt archive
         self,
         *,
-        workspace,
-        prompt,
-        model,
-        priced_spec,
-        max_turns,
-        collector,
-        stream_log_path=None,
-        timeout_s=None,
-        network=False,
-        max_run_cost=None,
-        effort=None,
-        agent_container=None,
-        **kwargs,
-    ):
+        workspace: str | Path,
+        prompt: str,
+        model: str,
+        priced_spec: Any,
+        max_turns: int,
+        collector: Any,
+        stream_log_path: str | Path | None = None,
+        timeout_s: float | None = None,
+        network: bool = False,
+        max_run_cost: float | None = None,
+        effort: str | None = None,
+        agent_container: Any = None,
+        **kwargs: Any,
+    ) -> CliAgentOutcome:
         del priced_spec, kwargs
         if agent_container or max_run_cost is not None:
             raise ProviderError(
@@ -307,16 +317,18 @@ class MuseCodeAdapter:
             text=True,
             start_new_session=True,
         )
-        errors = []
+        errors: list[str] = []
+        assert proc.stdout is not None and proc.stderr is not None
+        stdout, stderr = proc.stdout, proc.stderr
 
-        def drain():
-            for line in proc.stderr:
+        def drain() -> None:
+            for line in stderr:
                 errors.append(line)
 
         reader = threading.Thread(target=drain, daemon=True)
         reader.start()
 
-        def kill():
+        def kill() -> None:
             outcome.timed_out = True
             with suppress(ProcessLookupError):
                 os.killpg(proc.pid, signal.SIGKILL)
@@ -324,10 +336,10 @@ class MuseCodeAdapter:
         timer = threading.Timer(timeout_s, kill)
         timer.daemon = True
         timer.start()
-        terminal = None
+        terminal: dict[str, Any] | None = None
         try:
             with Path(stream_log_path or scratch / "stdout.jsonl").open("w") as log:
-                for line in proc.stdout:
+                for line in stdout:
                     try:
                         event = json.loads(line)
                     except json.JSONDecodeError:
