@@ -166,7 +166,7 @@ def main():  # noqa: PLR0912, PLR0915, one linear figure
     for font in (ROOT / "scripts/rankings-chart").glob("*.ttf"):
         font_manager.fontManager.addfont(font)
     plt.rcParams.update({"font.family": "Geist", "text.color": INK, "svg.fonttype": "path"})
-    width_in, height_in = 16, 11.1
+    width_in, height_in = 16, 11.5
     fig = plt.figure(figsize=(width_in, height_in), dpi=150, facecolor=PAPER)
 
     def yf(inches):
@@ -199,46 +199,74 @@ def main():  # noqa: PLR0912, PLR0915, one linear figure
     line(left, right, 1.05, INK, 1.2)
 
     # Title
-    text(left, 1.9, "VulcanBench-SWE v4: Astra vs. Fable 5.1", 33, True, heading=True)
-    text(left, 2.38, "Combined score at each model's highest-scoring effort. 23 tasks per model. "
+    text(left, 1.78, "VulcanBench-SWE v4: Astra vs. Fable 5.1", 33, True, heading=True)
+    text(left, 2.22, "Combined score and runtime at every effort level. 23 tasks per model per effort. "
                      "Code quality judged by Muse Spark 1.3 and Grok 4.6.", 15, color=MUTED)
 
-    # Score panels
-    a, f = best["astra"], best["fable"]
-    panel_top, panel_h, panel_w = 2.95, 3.1, .42
-    for model, g, x in (("astra", a, left), ("fable", f, right - panel_w)):
-        tint = {"astra": "#e6f4ef", "fable": "#fbeae2"}[model]
-        box(x, panel_top, panel_w, panel_h, tint, RULE)
-        fig.add_artist(plt.Line2D([x + .012, x + panel_w - .012], [yf(panel_top + .05), yf(panel_top + .05)],
-                                  transform=fig.transFigure, color=COLORS[model], lw=3.5, solid_capstyle="butt"))
-        text(x + .022, panel_top + .45, NAMES[model], 21, True, heading=True, color=COLORS[model])
-        text(x + .022, panel_top + .82, f"{HARNESS[model]}  ·  best at {g['effort'].replace('-', ' ')} effort", 12.5, color=MUTED)
-        text(x + .022, panel_top + 1.22, "COMBINED SCORE / 100", 11.5, True, color=MUTED)
-        text(x + .022, panel_top + 1.74, f"{g['combined']['mean']:.2f}", 50, True, numeric=True)
-        # Effort sweep: combined score and tasks passed at every effort level
-        text(x + .022, panel_top + 2.38, "BY EFFORT", 10.5, True, color=MUTED)
-        inner_left, inner_right = x + .022, x + panel_w - .022
-        cols = [inner_left + (inner_right - inner_left) * (i + .5) / len(LEVELS) for i in range(len(LEVELS))]
-        for cx, effort in zip(cols, LEVELS, strict=True):
-            ge = groups[model, effort]
-            selected = effort == g["effort"]
-            text(cx, panel_top + 2.62, effort.replace("-", " ").capitalize(), 10.5, ha="center", color=MUTED)
-            text(cx, panel_top + 2.88, fmt(ge["combined"]), 15, selected, numeric=True, ha="center")
-            if selected:
-                half = (inner_right - inner_left) / len(LEVELS) * .36
-                fig.add_artist(plt.Line2D([cx - half, cx + half], [yf(panel_top + 3.01), yf(panel_top + 3.01)],
-                                          transform=fig.transFigure, color=COLORS[model], lw=2))
+    # Legend
+    markers = {"astra": "o", "fable": "D"}
+    for model, x in (("astra", left), ("fable", .5)):
+        fig.add_artist(plt.Line2D([x + .004], [yf(2.68)], transform=fig.transFigure, marker=markers[model],
+                                  color=COLORS[model], markersize=8, markeredgecolor=INK, markeredgewidth=.6, linestyle="none"))
+        text(x + .018, 2.68, f"{NAMES[model]}  ·  {HARNESS[model]}", 15, True)
+    text(right, 2.68, "n=23 at every effort", 13, ha="right", color=MUTED)
+
+    # Charts: combined score by effort (lines) and runtime by effort (bars)
+    chart_top, chart_h = 3.75, 3.0
+    for panel, (x0, w) in (("combined", (.085, .405)), ("minutes", (.565, .39))):
+        tx = left if panel == "combined" else x0 - .04
+        text(tx, 3.1, "Combined score" if panel == "combined" else "Mean runtime", 21, True, heading=True)
+        text(tx, 3.42, "/100  ·  higher is better  ·  focused scale" if panel == "combined" else "Minutes per task  ·  lower is better", 12, color=MUTED)
+        ax = fig.add_axes([x0, yf(chart_top + chart_h), w, chart_h / height_in], facecolor=PAPER)
+        ax.set_xticks(range(len(LEVELS)), [e.replace("-", " ").capitalize() for e in LEVELS])
+        ax.tick_params(axis="x", length=0, labelsize=12, pad=8)
+        ax.tick_params(axis="y", length=0, labelsize=11, pad=6)
+        ax.spines[["top", "right"]].set_visible(False)
+        ax.spines[["left", "bottom"]].set_color(RULE)
+        ax.grid(axis="y", color=RULE, linewidth=.5)
+        ax.set_axisbelow(True)
+        if panel == "combined":
+            values = [groups[m, e]["combined"] for m in COLORS for e in LEVELS]
+            lo = math.floor(min(v["mean"] - (v["se"] or 0) for v in values)) - 0.5
+            hi = math.ceil(max(v["mean"] + (v["se"] or 0) for v in values)) + 0.5
+            ax.set_ylim(lo, hi)
+            ax.set_yticks(range(math.ceil(lo), math.floor(hi) + 1))
+            ax.set_xlim(-.45, len(LEVELS) - .55)
+            for model in COLORS:  # noqa: PLC0206, keys only
+                ys = [groups[model, e]["combined"]["mean"] for e in LEVELS]
+                es = [groups[model, e]["combined"]["se"] or 0 for e in LEVELS]
+                ax.plot(range(len(LEVELS)), ys, color=COLORS[model], linewidth=2, zorder=2)
+                ax.errorbar(range(len(LEVELS)), ys, yerr=es, fmt=markers[model], color=COLORS[model], markersize=8,
+                            markeredgecolor=INK, markeredgewidth=.6, ecolor=INK, elinewidth=.9, capsize=3, zorder=3)
+                for i, (y, e) in enumerate(zip(ys, es, strict=True)):
+                    above = model == "fable"
+                    ax.annotate(f"{y:.2f}", (i, y + e if above else y - e), xytext=(0, 7 if above else -7), textcoords="offset points",
+                                ha="center", va="bottom" if above else "top", fontsize=10.5, fontfamily="IBM Plex Mono", color=INK)
+        else:
+            top = 10 * math.ceil(max(groups[m, e]["minutes"]["mean"] + (groups[m, e]["minutes"]["se"] or 0) for m in COLORS for e in LEVELS) / 10) + 5
+            ax.set_ylim(0, top)
+            ax.set_yticks(range(0, top + 1, 10))
+            ax.set_xlim(-.6, len(LEVELS) - .4)
+            for model, shift in (("astra", -.19), ("fable", .19)):
+                ys = [groups[model, e]["minutes"]["mean"] for e in LEVELS]
+                es = [groups[model, e]["minutes"]["se"] or 0 for e in LEVELS]
+                ax.bar([i + shift for i in range(len(LEVELS))], ys, width=.34, color=COLORS[model], edgecolor=INK, linewidth=.5,
+                       yerr=es, error_kw={"ecolor": INK, "elinewidth": .9, "capsize": 3}, zorder=2)
+                for i, (y, e) in enumerate(zip(ys, es, strict=True)):
+                    ax.annotate(f"{y:.1f}", (i + shift, y + e), xytext=(0, 5), textcoords="offset points", ha="center", va="bottom",
+                                fontsize=10.5, fontfamily="IBM Plex Mono", color=INK)
 
     # Table
-    text(left, 6.75, "Table 1  |  Code quality at each model's best effort", 14.5, False, heading=True)
+    a, f = best["astra"], best["fable"]
+    text(left, 7.55, "Table 1  |  Code quality at each model's best effort", 14.5, False, heading=True)
     col_a, col_f, col_d = .60, .78, .94
-    line(left, right, 7.03, INK, 1.2)
-    text(left, 7.27, "Component", 12.5, True)
-    text(col_a, 7.27, "GPT-6 Astra", 12.5, True, ha="right")
-    text(col_f, 7.27, "Fable 5.1", 12.5, True, ha="right")
-    text(col_d, 7.27, "Difference", 12.5, True, ha="right")
-    text(col_d, 7.53, "Fable minus Astra", 10, ha="right", color=MUTED)
-    line(left, right, 7.7, INK, .6)
+    line(left, right, 7.83, INK, 1.2)
+    text(left, 8.07, "Component", 12.5, True)
+    text(col_a, 8.07, "GPT-6 Astra", 12.5, True, ha="right")
+    text(col_f, 8.07, "Fable 5.1", 12.5, True, ha="right")
+    text(col_d, 8.07, "Difference", 12.5, True, ha="right")
+    text(col_d, 8.33, "Fable minus Astra", 10, ha="right", color=MUTED)
+    line(left, right, 8.5, INK, .6)
 
     def se(stat):
         return {"mean": stat["se"], "se": None} if stat.get("se") is not None else {"mean": None, "se": None}
@@ -251,10 +279,9 @@ def main():  # noqa: PLR0912, PLR0915, one linear figure
         ("    Rated by Muse Spark 1.3", a["by_panel"]["muse"], f["by_panel"]["muse"], 1, False, False),
         ("    Rated by Grok 4.6", a["by_panel"]["grok"], f["by_panel"]["grok"], 1, False, False),
         ("Standard error of Code quality", se(a["code_quality"]), se(f["code_quality"]), 2, False, True),
-        ("Mean runtime per task, minutes", a["minutes"], f["minutes"], 2, False, True),
     ]
     step = .38
-    y = 8.02
+    y = 8.82
     for label, sa, sf, digits, emphasis, group_end in rows:
         quiet = label.startswith("Standard error")
         text(left, y, label, 13 if emphasis else 12.5, emphasis, color=MUTED if quiet else INK)
