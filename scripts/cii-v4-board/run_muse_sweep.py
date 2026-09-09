@@ -68,7 +68,9 @@ def result_summary(result):
         # failure (functional 0.0) and skips the quality and security
         # analyzers by design. Accept it as a scored result rather than
         # pausing for grading inspection.
-        assert scores["functional"] == 0.0 and scores["total"] == 0.0, "Unexpected budget-exceeded scores"
+        assert scores["functional"] == 0.0 and scores["total"] == 0.0, (
+            "Unexpected budget-exceeded scores"
+        )
         return summary
     for name in ("functional", "quality", "security"):
         assert scores[name] is not None, f"Missing {name}; pause for grading inspection"

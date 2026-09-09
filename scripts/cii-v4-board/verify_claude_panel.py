@@ -1,4 +1,5 @@
 """Audit all saved reviewer evidence and compute an equal-model review panel."""
+
 import json
 import statistics
 import sys
@@ -31,7 +32,9 @@ def main():  # noqa: PLR0915
             vote = json.loads((folder / f"{name}.json").read_text())
             prompt = base.prompt_for(data, persona)
             assert (folder / f"{name}.prompt.txt").read_text() == prompt
-            assert vote["binding"] == binding and vote["prompt_sha256"] == base.digest(prompt.encode())
+            assert vote["binding"] == binding and vote["prompt_sha256"] == base.digest(
+                prompt.encode()
+            )
             parsed = parse((folder / f"{name}.stream.jsonl").read_text())
             assert parsed["model_reported"] == "claude-opus-5"
             assert vote["status"] == "complete" and vote["judge_effort_requested"] == "medium"
@@ -42,26 +45,52 @@ def main():  # noqa: PLR0915
             checked.append(vote)
         assert record["votes"] == checked
         assert record["human_like"] == round(sum(v["score"] for v in checked) / 300, 4)
-        astra = json.loads((ROOT / "runs-astra-cii-v4-judging-v2" / run.parent.name / run.name / "judging.json").read_text())
+        astra = json.loads(
+            (
+                ROOT / "runs-astra-cii-v4-judging-v2" / run.parent.name / run.name / "judging.json"
+            ).read_text()
+        )
         assert astra["source_hashes"] == hashes
         astra_folder = ROOT / "runs-astra-cii-v4-judging-v2" / run.parent.name / run.name
         for name, persona in base._PERSONAS:
             raw_astra = base.parse_stream((astra_folder / f"{name}.stream.jsonl").read_text())
             saved_astra = json.loads((astra_folder / f"{name}.json").read_text())
-            assert (astra_folder / f"{name}.prompt.txt").read_text() == base.prompt_for(data, persona)
+            assert (astra_folder / f"{name}.prompt.txt").read_text() == base.prompt_for(
+                data, persona
+            )
             assert raw_astra["score"] == saved_astra["score"]
-            assert any(v["persona"] == name and v["score"] == raw_astra["score"] for v in astra["votes"])
+            assert any(
+                v["persona"] == name and v["score"] == raw_astra["score"] for v in astra["votes"]
+            )
         # Retain existing per-model four-decimal scores, then average equally.
         panel = (astra["human_like"] + record["human_like"]) / 2
         score = reviewed_score({**data["summary"]["scores"], "human_like": panel})
-        rows.append({"effort": run.parent.name, "task": record["task_id"], "run_id": run.name,
-                     "astra": astra["human_like"], "claude": record["human_like"], "panel": panel,
-                     "combined": score, "functional": data["summary"]["scores"]["functional"],
-                     "quality": data["summary"]["scores"]["quality"], "security": data["summary"]["scores"]["security"]})
+        rows.append(
+            {
+                "effort": run.parent.name,
+                "task": record["task_id"],
+                "run_id": run.name,
+                "astra": astra["human_like"],
+                "claude": record["human_like"],
+                "panel": panel,
+                "combined": score,
+                "functional": data["summary"]["scores"]["functional"],
+                "quality": data["summary"]["scores"]["quality"],
+                "security": data["summary"]["scores"]["security"],
+            }
+        )
         votes.extend(checked)
     assert len(votes) == 345
     all_streams = list(output.rglob("*.stream.jsonl"))
-    usage = {k: 0 for k in ("input_tokens", "output_tokens", "cache_read_input_tokens", "cache_creation_input_tokens")}
+    usage = {
+        k: 0
+        for k in (
+            "input_tokens",
+            "output_tokens",
+            "cache_read_input_tokens",
+            "cache_creation_input_tokens",
+        )
+    }
     api_cost = 0
     active_ms = 0
     for path in all_streams:
@@ -74,30 +103,57 @@ def main():  # noqa: PLR0915
         api_cost += result["total_cost_usd"]
         active_ms += result["duration_ms"]
         init = [e for e in events if e.get("type") == "system" and e.get("subtype") == "init"]
-        assert len(init) == 1 and init[0]["model"] == "claude-opus-5" and not init[0]["tools"] and not init[0]["mcp_servers"]
+        assert (
+            len(init) == 1
+            and init[0]["model"] == "claude-opus-5"
+            and not init[0]["tools"]
+            and not init[0]["mcp_servers"]
+        )
         assert init[0].get("apiKeySource") == "none"
         for e in events:
             for block in e.get("message", {}).get("content", []):
                 assert block.get("type") not in {"tool_use", "server_tool_use"}
             if e.get("type") == "rate_limit_event":
                 assert e["rate_limit_info"]["isUsingOverage"] is False
-    start = datetime.fromisoformat(json.loads((output / "execution.json").read_text())["started_at"])
+    start = datetime.fromisoformat(
+        json.loads((output / "execution.json").read_text())["started_at"]
+    )
     end = max(datetime.fromisoformat(v["completed_at"]) for v in votes)
-    efforts = {level: {key: statistics.mean(r[key] for r in rows if r["effort"] == level)
-                        for key in ("astra", "claude", "panel", "combined")}
-               for level in base.LEVELS}
-    result = {"profile": "swe-v4-reviewed-equal-panel-2026-09-05", "runs": 115, "valid_votes": 345,
-              "total_claude_calls": len(all_streams), "excluded_format_failures": len(all_streams)-345,
-              "source_hashes_unchanged": True, "raw_votes_and_prompts_verified": True,
-              "model": "claude-opus-5", "no_overage_detected": True, "usage_including_retries": usage,
-              "total_tokens": sum(usage.values()), "cli_api_equivalent_estimate_usd": api_cost,
-              "api_cost_note": "CLI-reported estimate, not subscription cash charge; includes failed attempts",
-              "claude_active_request_seconds": active_ms / 1000,
-              "claude_elapsed_seconds_including_pauses": (end-start).total_seconds(),
-              "efforts": efforts, "rows": rows,
-              "largest_review_gaps": sorted(rows, key=lambda r: abs(r["astra"]-r["claude"]), reverse=True)[:10]}
+    efforts = {
+        level: {
+            key: statistics.mean(r[key] for r in rows if r["effort"] == level)
+            for key in ("astra", "claude", "panel", "combined")
+        }
+        for level in base.LEVELS
+    }
+    result = {
+        "profile": "swe-v4-reviewed-equal-panel-2026-09-05",
+        "runs": 115,
+        "valid_votes": 345,
+        "total_claude_calls": len(all_streams),
+        "excluded_format_failures": len(all_streams) - 345,
+        "source_hashes_unchanged": True,
+        "raw_votes_and_prompts_verified": True,
+        "model": "claude-opus-5",
+        "no_overage_detected": True,
+        "usage_including_retries": usage,
+        "total_tokens": sum(usage.values()),
+        "cli_api_equivalent_estimate_usd": api_cost,
+        "api_cost_note": "CLI-reported estimate, not subscription cash charge; includes failed attempts",
+        "claude_active_request_seconds": active_ms / 1000,
+        "claude_elapsed_seconds_including_pauses": (end - start).total_seconds(),
+        "efforts": efforts,
+        "rows": rows,
+        "largest_review_gaps": sorted(
+            rows, key=lambda r: abs(r["astra"] - r["claude"]), reverse=True
+        )[:10],
+    }
     base.save(output / "verification.json", result)
-    print(json.dumps({k:v for k,v in result.items() if k not in ("rows", "largest_review_gaps")}, indent=2))
+    print(
+        json.dumps(
+            {k: v for k, v in result.items() if k not in ("rows", "largest_review_gaps")}, indent=2
+        )
+    )
 
 
 if __name__ == "__main__":

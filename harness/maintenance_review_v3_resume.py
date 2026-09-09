@@ -46,7 +46,13 @@ REQUESTED_MODEL = "claude-opus-5"
 
 
 def stage_kind(stage: str) -> str:
-    return {"primary": "review", "repeat": "review", "pairwise": "pair", "probe": "probe", "match": "match"}[stage]
+    return {
+        "primary": "review",
+        "repeat": "review",
+        "pairwise": "pair",
+        "probe": "probe",
+        "match": "match",
+    }[stage]
 
 
 def payload_for(stage: str, ident: str) -> dict | None:  # noqa: PLR0911, one branch per stage
@@ -60,7 +66,10 @@ def payload_for(stage: str, ident: str) -> dict | None:  # noqa: PLR0911, one br
     if stage == "pairwise":
         a, b = ident.split("-submission-")
         b = "submission-" + b
-        return {"A": v3.read(OUT / "evidence" / f"{a}.json"), "B": v3.read(OUT / "evidence" / f"{b}.json")}
+        return {
+            "A": v3.read(OUT / "evidence" / f"{a}.json"),
+            "B": v3.read(OUT / "evidence" / f"{b}.json"),
+        }
     if stage == "probe":
         return v3.probe_evidence(v3.read(OUT / "evidence" / f"{ident}.json"))
     if stage == "match":
@@ -68,13 +77,19 @@ def payload_for(stage: str, ident: str) -> dict | None:  # noqa: PLR0911, one br
         if not probe.exists():
             return None
         row = next(r for r in v3.read(OUT / "private-manifest.json") if r["id"] == ident)
-        return {"key": v3.load_key(row["task"])["quirks"], "departures": v3.read(probe)["departures"]}
+        return {
+            "key": v3.load_key(row["task"])["quirks"],
+            "departures": v3.read(probe)["departures"],
+        }
     return None
 
 
 def assistant_models(stream_text: str) -> set[str]:
-    return {json.loads(line)["message"]["model"] for line in stream_text.splitlines()
-            if line.strip() and "\"type\":\"assistant\"" in line}
+    return {
+        json.loads(line)["message"]["model"]
+        for line in stream_text.splitlines()
+        if line.strip() and '"type":"assistant"' in line
+    }
 
 
 MATCH_ORDER_ERROR = "Matches must cover every key quirk once, in order"
@@ -96,11 +111,16 @@ def retry_external_kill(folder: Path) -> bool:
     if "exit 143" not in str(rec.get("error", "")) and "SIGTERM" not in str(rec.get("error", "")):
         return False
     rec["retryable"] = True
-    rec["operator_review"] = {"at": datetime.now(UTC).isoformat(),
-                              "finding": "Judge process received SIGTERM from outside the runner (exit 143); no response was produced.",
-                              "action": "Transport fault: one fresh attempt per the protocol; receipt retained."}
+    rec["operator_review"] = {
+        "at": datetime.now(UTC).isoformat(),
+        "finding": "Judge process received SIGTERM from outside the runner (exit 143); no response was produced.",
+        "action": "Transport fault: one fresh attempt per the protocol; receipt retained.",
+    }
     receipt.write_text(json.dumps(rec, indent=2, sort_keys=True))
-    print(json.dumps({"event": "external_kill_retry", "call": str(folder.relative_to(OUT))}), flush=True)
+    print(
+        json.dumps({"event": "external_kill_retry", "call": str(folder.relative_to(OUT))}),
+        flush=True,
+    )
     return True
 
 
@@ -134,16 +154,38 @@ def quota_resume(folder: Path) -> bool:
     archive.mkdir(exist_ok=True)
     prior = len(list(archive.glob("*-attempt-*.json")))
     if prior >= QUOTA_MAX_RESUMES:
-        print(json.dumps({"event": "quota_stop_limit", "call": str(folder.relative_to(OUT)), "stops": prior}), flush=True)
+        print(
+            json.dumps(
+                {"event": "quota_stop_limit", "call": str(folder.relative_to(OUT)), "stops": prior}
+            ),
+            flush=True,
+        )
         return False
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     for path in folder.glob(f"attempt-{latest}.*"):
         path.rename(archive / f"{stamp}-{path.name}")
-    (archive / f"{stamp}-note.json").write_text(json.dumps({
-        "finding": "transport quota or rate-limit error with no response", "error": error[:300],
-        "action": "attempt archived; same call resumed after backoff (protocol: quota stops preserve receipts and resume)"}, indent=2))
-    wait = min(180 * (2 ** prior), 1800)
-    print(json.dumps({"event": "quota_resume", "call": str(folder.relative_to(OUT)), "prior_stops": prior, "wait_s": wait}), flush=True)
+    (archive / f"{stamp}-note.json").write_text(
+        json.dumps(
+            {
+                "finding": "transport quota or rate-limit error with no response",
+                "error": error[:300],
+                "action": "attempt archived; same call resumed after backoff (protocol: quota stops preserve receipts and resume)",
+            },
+            indent=2,
+        )
+    )
+    wait = min(180 * (2**prior), 1800)
+    print(
+        json.dumps(
+            {
+                "event": "quota_resume",
+                "call": str(folder.relative_to(OUT)),
+                "prior_stops": prior,
+                "wait_s": wait,
+            }
+        ),
+        flush=True,
+    )
     time.sleep(wait)
     return True
 
@@ -194,11 +236,30 @@ def recover_match_ids(folder: Path, panel: str, stage: str) -> bool:
         except ValueError:
             continue
         binding = json.loads(receipts[attempt - 1].read_text())["binding"]
-        vote.update(binding=binding, status="complete", stage=stage, panel=panel, kind="match",
-                    operator_recovery={"at": datetime.now(UTC).isoformat(), "method": "quirk ids normalized to key ids and key order",
-                                       "original_quirk_fields": original, "source_attempt": attempt})
+        vote.update(
+            binding=binding,
+            status="complete",
+            stage=stage,
+            panel=panel,
+            kind="match",
+            operator_recovery={
+                "at": datetime.now(UTC).isoformat(),
+                "method": "quirk ids normalized to key ids and key order",
+                "original_quirk_fields": original,
+                "source_attempt": attempt,
+            },
+        )
         base.save(folder / "selected.json", vote)
-        print(json.dumps({"event": "match_id_recovery_applied", "call": str(folder.relative_to(OUT)), "attempt": attempt}), flush=True)
+        print(
+            json.dumps(
+                {
+                    "event": "match_id_recovery_applied",
+                    "call": str(folder.relative_to(OUT)),
+                    "attempt": attempt,
+                }
+            ),
+            flush=True,
+        )
         return True
     return False
 
@@ -231,12 +292,31 @@ def accept_fallback(folder: Path, panel: str, stage: str) -> bool:
         if kind == "review":
             vote["reported_score"] = vote["score"]
             vote.update(v3.host_review_score(vote))
-        vote.update(binding=rec["binding"], status="complete", stage=stage, panel=panel, kind=kind,
-                    reviewer_fallback={"at": datetime.now(UTC).isoformat(), "requested": REQUESTED_MODEL,
-                                       "served": FALLBACK_MODEL, "source_attempt": n,
-                                       "policy": "retain and disclose reviewer fallbacks (owner decision 2026-09-07)"})
+        vote.update(
+            binding=rec["binding"],
+            status="complete",
+            stage=stage,
+            panel=panel,
+            kind=kind,
+            reviewer_fallback={
+                "at": datetime.now(UTC).isoformat(),
+                "requested": REQUESTED_MODEL,
+                "served": FALLBACK_MODEL,
+                "source_attempt": n,
+                "policy": "retain and disclose reviewer fallbacks (owner decision 2026-09-07)",
+            },
+        )
         base.save(folder / "selected.json", vote)
-        print(json.dumps({"event": "reviewer_fallback_accepted", "call": str(folder.relative_to(OUT)), "attempt": n}), flush=True)
+        print(
+            json.dumps(
+                {
+                    "event": "reviewer_fallback_accepted",
+                    "call": str(folder.relative_to(OUT)),
+                    "attempt": n,
+                }
+            ),
+            flush=True,
+        )
         return True
     return False
 
@@ -270,7 +350,9 @@ def rewrap_excerpt(excerpt: str, source: list[str]) -> str | None:
     return _rewrap_fragment(excerpt, source)
 
 
-_TOKEN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*|\d+|\"[^\"]*\"|'[^']*'|==|!=|<=|>=|\+=|-=|\*=|//=|//|\*\*|[^\s\w]")
+_TOKEN = re.compile(
+    r"[A-Za-z_][A-Za-z0-9_]*|\d+|\"[^\"]*\"|'[^']*'|==|!=|<=|>=|\+=|-=|\*=|//=|//|\*\*|[^\s\w]"
+)
 
 
 def _span_anywhere(fragment: str, source: list[str]) -> str | None:
@@ -300,7 +382,7 @@ def _span_anywhere(fragment: str, source: list[str]) -> str | None:
                     j += 1
                     accum = _collapse(accum + " " + collapsed[j]) if collapsed[j] else accum
                 if accum.startswith(target):
-                    span = "\n".join(lines[i:j + 1])
+                    span = "\n".join(lines[i : j + 1])
                     return span if v3.excerpt_supported(span, source) else None
                 break
     return None
@@ -316,7 +398,9 @@ def _omission_only_line(fragment: str, source: list[str]) -> str | None:
     wanted = _TOKEN.findall(fragment)
     if len(wanted) < 4:
         return None
-    for text in sorted(source, key=lambda s: s.startswith("diff --git")):  # final source before the patch text
+    for text in sorted(
+        source, key=lambda s: s.startswith("diff --git")
+    ):  # final source before the patch text
         for line in text.splitlines():
             have = _TOKEN.findall(line)
             if len(have) <= len(wanted):
@@ -334,14 +418,18 @@ def _rewrap_fragment(excerpt: str, source: list[str]) -> str | None:
     it remains a prefix of the fragment, so unrelated preceding code is never
     pulled in.
     """
-    excerpt = excerpt.replace("\\n", "\n")  # GLM sometimes double-escapes newlines inside JSON strings
+    excerpt = excerpt.replace(
+        "\\n", "\n"
+    )  # GLM sometimes double-escapes newlines inside JSON strings
     if v3.excerpt_supported(excerpt, source):
         return excerpt
     # A judge may decode a source escape such as backslash-x00 or backslash-0 into the real control
     # character inside its JSON. Try the common spellings the source could have used; the value is identical.
     if any(ord(ch) < 32 and ch not in "\n\t" for ch in excerpt):
         for style in ("\\x{:02x}", "\\{:o}", "\\{:03o}", "\\u{:04x}"):
-            reescaped = "".join(style.format(ord(ch)) if ord(ch) < 32 and ch not in "\n\t" else ch for ch in excerpt)
+            reescaped = "".join(
+                style.format(ord(ch)) if ord(ch) < 32 and ch not in "\n\t" else ch for ch in excerpt
+            )
             if v3.excerpt_supported(reescaped, source):
                 return reescaped
     target = _collapse(excerpt)
@@ -358,7 +446,7 @@ def _rewrap_fragment(excerpt: str, source: list[str]) -> str | None:
                 if end > start:
                     joined = _collapse(joined + " " + lines[end])
                 if joined == target:
-                    span = "\n".join(lines[start:end + 1])
+                    span = "\n".join(lines[start : end + 1])
                     return span if v3.excerpt_supported(span, source) else None
                 if not target.startswith(joined):
                     break
@@ -390,13 +478,26 @@ def recover_excerpts(folder: Path, panel: str, stage: str) -> bool:  # noqa: PLR
         except (ValueError, json.JSONDecodeError, KeyError):
             continue
         recovered = {}
-        holders = (list(vote.get("dimensions", {}).items()) if kind == "review"
-                   else list(enumerate(vote.get("departures", []))))
+        holders = (
+            list(vote.get("dimensions", {}).items())
+            if kind == "review"
+            else list(enumerate(vote.get("departures", [])))
+        )
         for label, detail in holders:
             span = rewrap_excerpt(detail["excerpt"], source)
             if span is None:
-                print(json.dumps({"event": "excerpt_not_recoverable", "call": ident, "attempt": attempt, "holder": str(label),
-                                  "excerpt": detail["excerpt"][:200]}), flush=True)
+                print(
+                    json.dumps(
+                        {
+                            "event": "excerpt_not_recoverable",
+                            "call": ident,
+                            "attempt": attempt,
+                            "holder": str(label),
+                            "excerpt": detail["excerpt"][:200],
+                        }
+                    ),
+                    flush=True,
+                )
                 break
             if span != detail["excerpt"]:
                 recovered[str(label)] = detail["excerpt"]
@@ -410,25 +511,49 @@ def recover_excerpts(folder: Path, panel: str, stage: str) -> bool:  # noqa: PLR
                 vote["reported_score"] = vote["score"]
                 vote.update(v3.host_review_score(vote))
             binding = json.loads(receipts[attempt - 1].read_text())["binding"]
-            vote.update(binding=binding, status="complete", stage=stage, panel=panel, kind=kind,
-                        operator_recovery={"at": datetime.now(UTC).isoformat(),
-                                           "method": "excerpt re-wrapped to source line breaks",
-                                           "original_excerpts": recovered, "source_attempt": attempt})
+            vote.update(
+                binding=binding,
+                status="complete",
+                stage=stage,
+                panel=panel,
+                kind=kind,
+                operator_recovery={
+                    "at": datetime.now(UTC).isoformat(),
+                    "method": "excerpt re-wrapped to source line breaks",
+                    "original_excerpts": recovered,
+                    "source_attempt": attempt,
+                },
+            )
             base.save(folder / "selected.json", vote)
-            print(json.dumps({"event": "excerpt_recovery_applied", "call": str(folder.relative_to(OUT)),
-                              "attempt": attempt, "holders": sorted(recovered)}), flush=True)
+            print(
+                json.dumps(
+                    {
+                        "event": "excerpt_recovery_applied",
+                        "call": str(folder.relative_to(OUT)),
+                        "attempt": attempt,
+                        "holders": sorted(recovered),
+                    }
+                ),
+                flush=True,
+            )
             return True
     return False
 
 
 def newest_unresolved(panel: str) -> Path | None:
-    stopped = [d for d in (OUT / "calls" / panel).glob("*/*/") if not (d / "selected.json").exists()
-               and (d / "attempt-1.json").exists()]
+    stopped = [
+        d
+        for d in (OUT / "calls" / panel).glob("*/*/")
+        if not (d / "selected.json").exists() and (d / "attempt-1.json").exists()
+    ]
     return max(stopped, key=lambda d: (d / "attempt-1.json").stat().st_mtime) if stopped else None
 
 
 def apply_rule(folder: Path) -> bool:
-    if folder.parent.parent.name not in ("claude", "reader") or (folder / "attempt-2.json").exists():
+    if (
+        folder.parent.parent.name not in ("claude", "reader")
+        or (folder / "attempt-2.json").exists()
+    ):
         return False
     receipt = json.loads((folder / "attempt-1.json").read_text())
     if receipt.get("status") != "failed" or receipt.get("retryable") is not False:
@@ -436,7 +561,11 @@ def apply_rule(folder: Path) -> bool:
     stream = folder / "attempt-1.stream.jsonl"
     if not stream.exists():
         return False
-    results = [json.loads(line) for line in stream.read_text().splitlines() if line.strip() and "\"type\":\"result\"" in line]
+    results = [
+        json.loads(line)
+        for line in stream.read_text().splitlines()
+        if line.strip() and '"type":"result"' in line
+    ]
     if not results or results[0].get("subtype") != SUBTYPE:
         return False
     receipt["retryable"] = True
@@ -444,10 +573,13 @@ def apply_rule(folder: Path) -> bool:
         "at": datetime.now(UTC).isoformat(),
         "finding": f"CLI result subtype {SUBTYPE}; invalid-schema response under the protocol text.",
         "action": "Marked retryable by the documented operator rule (maintenance_review_v3_resume); "
-                  "single fresh attempt; receipt retained.",
+        "single fresh attempt; receipt retained.",
     }
     (folder / "attempt-1.json").write_text(json.dumps(receipt, indent=2, sort_keys=True))
-    print(json.dumps({"event": "operator_rule_applied", "call": str(folder.relative_to(OUT))}), flush=True)
+    print(
+        json.dumps({"event": "operator_rule_applied", "call": str(folder.relative_to(OUT))}),
+        flush=True,
+    )
     return True
 
 
@@ -456,9 +588,14 @@ def main() -> int:
     panel = args[args.index("--panel") + 1]
     applied = 0
     while True:
-        proc = subprocess.run([sys.executable, "-u", "-m", "harness.maintenance_review_v3", *args], check=False)
+        proc = subprocess.run(
+            [sys.executable, "-u", "-m", "harness.maintenance_review_v3", *args], check=False
+        )
         if proc.returncode == 0:
-            print(json.dumps({"event": "stage_complete", "operator_rule_applications": applied}), flush=True)
+            print(
+                json.dumps({"event": "stage_complete", "operator_rule_applications": applied}),
+                flush=True,
+            )
             return 0
         folder = newest_unresolved(panel)
         if folder is not None and apply_rule(folder):
@@ -480,8 +617,16 @@ def main() -> int:
             applied += 1
             continue
         if True:
-            print(json.dumps({"event": "stopped_for_operator", "call": str(folder) if folder else None,
-                              "operator_rule_applications": applied}), flush=True)
+            print(
+                json.dumps(
+                    {
+                        "event": "stopped_for_operator",
+                        "call": str(folder) if folder else None,
+                        "operator_rule_applications": applied,
+                    }
+                ),
+                flush=True,
+            )
             return proc.returncode
 
 

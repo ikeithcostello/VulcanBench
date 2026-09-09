@@ -54,7 +54,9 @@ from harness.pricing import cost_usd
 from harness.redaction import sanitize
 from harness.sandbox.docker_executor import ResourceSpec
 
-CLI_AGENT_PROVIDERS = frozenset({"claude-code", "codex", "cursor", "grok-build", "zcode", "muse-code"})
+CLI_AGENT_PROVIDERS = frozenset(
+    {"claude-code", "codex", "cursor", "grok-build", "zcode", "muse-code"}
+)
 
 # Claude Code's headless result text when a subscription window is exhausted
 # (e.g. "Claude AI usage limit reached|...", "5-hour limit reached ∙ resets 3am").

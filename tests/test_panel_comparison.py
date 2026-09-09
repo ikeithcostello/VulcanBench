@@ -1,4 +1,5 @@
 """Offline guardrails for the additive comparison; no provider calls."""
+
 import math
 
 import pytest
@@ -10,17 +11,19 @@ from harness.panel_comparison import aggregate, average_panel, claude_model_evid
 @pytest.mark.parametrize("value", [None, True, -1, 1.1, float("nan"), float("inf"), "0.8"])
 def test_missing_or_invalid_reviewer_never_reweighted(value):
     with pytest.raises(ValueError):
-        average_panel(.8, value)
+        average_panel(0.8, value)
 
 
 def test_equal_panel_and_fixed_twenty_percent_weight():
-    panel = average_panel(.9, .7)
-    assert panel == .8
-    assert reviewed_score({"functional": 1, "quality": .8, "security": .9, "human_like": panel}) == pytest.approx(.915)
+    panel = average_panel(0.9, 0.7)
+    assert panel == 0.8
+    assert reviewed_score(
+        {"functional": 1, "quality": 0.8, "security": 0.9, "human_like": panel}
+    ) == pytest.approx(0.915)
 
 
 def test_one_sample_standard_error():
-    result = mean_se([1., 2., 3.])
+    result = mean_se([1.0, 2.0, 3.0])
     assert result["mean"] == 2
     assert result["se"] == pytest.approx(1 / math.sqrt(3))
 
@@ -39,8 +42,15 @@ def test_duplicate_tasks_rejected():
 def events(model, fallback=False):
     result = [{"type": "assistant", "message": {"model": model}}]
     if fallback:
-        result.append({"subtype": "model_refusal_fallback", "original_model": "claude-opus-5",
-                       "fallback_model": "claude-opus-4-8", "scope": "session", "trigger": "refusal"})
+        result.append(
+            {
+                "subtype": "model_refusal_fallback",
+                "original_model": "claude-opus-5",
+                "fallback_model": "claude-opus-4-8",
+                "scope": "session",
+                "trigger": "refusal",
+            }
+        )
     return result
 
 
@@ -53,7 +63,9 @@ def test_reviewer_fallback_requires_explicit_policy():
     with pytest.raises(ValueError, match="approval"):
         claude_model_evidence(events("claude-opus-4-8", True), allow_fallbacks=False)
     assert claude_model_evidence(events("claude-opus-4-8", True), allow_fallbacks=True) == {
-        "assistant_models": ["claude-opus-4-8"], "fallback": True}
+        "assistant_models": ["claude-opus-4-8"],
+        "fallback": True,
+    }
 
 
 def test_pure_opus_is_not_labeled_a_fallback():

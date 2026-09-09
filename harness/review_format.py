@@ -4,6 +4,7 @@ Never change a numeric rating or choose among ratings by value. The original
 stream remains untouched; normalization is performed only in memory. Other
 malformed JSON remains an error.
 """
+
 import json
 import re
 
@@ -33,7 +34,9 @@ def parse_claude_preserving_rating(stream):
             raise
         result = results[0]
         raw = result["result"]
-        match = re.fullmatch(r'\s*\{\s*"score"\s*:\s*(\d+(?:\.\d+)?)\s*,\s*"rationale"\s*:\s*"(.*)"\s*\}\s*', raw)
+        match = re.fullmatch(
+            r'\s*\{\s*"score"\s*:\s*(\d+(?:\.\d+)?)\s*,\s*"rationale"\s*:\s*"(.*)"\s*\}\s*', raw
+        )
         if not match:
             raise
         normalized = escape_code_quotes(raw)

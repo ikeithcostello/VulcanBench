@@ -4,9 +4,19 @@ from harness.solver_receipts import claude_receipts
 
 
 def receipt(ident, cost, output=10):
-    return {"uuid": ident, "session_id": "s", "subtype": "success", "is_error": False,
-            "total_cost_usd": cost, "usage": {"input_tokens": 1, "cache_read_input_tokens": 100,
-                                               "cache_creation_input_tokens": 20, "output_tokens": output}}
+    return {
+        "uuid": ident,
+        "session_id": "s",
+        "subtype": "success",
+        "is_error": False,
+        "total_cost_usd": cost,
+        "usage": {
+            "input_tokens": 1,
+            "cache_read_input_tokens": 100,
+            "cache_creation_input_tokens": 20,
+            "output_tokens": output,
+        },
+    }
 
 
 def test_raw_tokens_not_price_discounted():

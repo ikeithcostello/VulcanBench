@@ -3,6 +3,7 @@
 Additive operational policy authorized September 6, 2026. Preserves all
 existing complete votes, raw responses, prompts, and frozen protocol bindings.
 """
+
 from __future__ import annotations
 
 import fcntl
@@ -25,7 +26,9 @@ def checked_stream(path):
     events = [json.loads(line) for line in stream.splitlines() if line.strip()]
     vote = parse_claude_preserving_rating(stream)
     init = next(e for e in events if e.get("type") == "system" and e.get("subtype") == "init")
-    require(init.get("apiKeySource") == "none" and not init.get("mcp_servers"), "Billing/tools changed")
+    require(
+        init.get("apiKeySource") == "none" and not init.get("mcp_servers"), "Billing/tools changed"
+    )
     require(vote["model_reported"] == "claude-opus-5", "Initial reviewer model changed")
     evidence = claude_model_evidence(events, allow_fallbacks=True)
     quota = original.quota_from(path)
@@ -38,21 +41,47 @@ def recovered_vote(path, folder, name, settings):
     result = next(e for e in events if e.get("type") == "result")
     # This argv is exactly the constant transport invocation in the frozen
     # Claude utility. Flag reconstruction instead of claiming a saved receipt.
-    argv = [settings["claude"], "-p", "--verbose", "--output-format", "stream-json",
-            "--model", settings["model"], "--effort", "medium", "--safe-mode",
-            "--tools", "", "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}',
-            "--no-session-persistence", "--disable-slash-commands", "--no-chrome",
-            "--setting-sources", "", "--system-prompt", base.SYSTEM]
-    return {**vote, "persona": name, "judge_model_requested": settings["model"],
-            "judge_effort_requested": "medium", "duration_s": result["duration_ms"] / 1000,
-            "duration_basis": "CLI receipt, recovered call only",
-            "completed_at": datetime.fromtimestamp(path.stat().st_mtime, UTC).isoformat(),
-            "completed_at_basis": "original stream file modification time",
-            "argv": argv, "argv_reconstructed_from_frozen_transport": True,
-            "raw_stream_relative": str(path.relative_to(folder)),
-            "raw_stream_sha256": base.digest(path.read_bytes()), "reviewer_model_evidence": identity,
-            "format_recovery": "Escape unescaped double quotes inside backtick-delimited code; score unchanged",
-            "selection_policy": "First recoverable response in chronological attempt order; no new call"}
+    argv = [
+        settings["claude"],
+        "-p",
+        "--verbose",
+        "--output-format",
+        "stream-json",
+        "--model",
+        settings["model"],
+        "--effort",
+        "medium",
+        "--safe-mode",
+        "--tools",
+        "",
+        "--strict-mcp-config",
+        "--mcp-config",
+        '{"mcpServers":{}}',
+        "--no-session-persistence",
+        "--disable-slash-commands",
+        "--no-chrome",
+        "--setting-sources",
+        "",
+        "--system-prompt",
+        base.SYSTEM,
+    ]
+    return {
+        **vote,
+        "persona": name,
+        "judge_model_requested": settings["model"],
+        "judge_effort_requested": "medium",
+        "duration_s": result["duration_ms"] / 1000,
+        "duration_basis": "CLI receipt, recovered call only",
+        "completed_at": datetime.fromtimestamp(path.stat().st_mtime, UTC).isoformat(),
+        "completed_at_basis": "original stream file modification time",
+        "argv": argv,
+        "argv_reconstructed_from_frozen_transport": True,
+        "raw_stream_relative": str(path.relative_to(folder)),
+        "raw_stream_sha256": base.digest(path.read_bytes()),
+        "reviewer_model_evidence": identity,
+        "format_recovery": "Escape unescaped double quotes inside backtick-delimited code; score unchanged",
+        "selection_policy": "First recoverable response in chronological attempt order; no new call",
+    }
 
 
 def recover_failed(folder, name, settings, data):
@@ -60,7 +89,9 @@ def recover_failed(folder, name, settings, data):
     if not saved.exists() or read(saved).get("status") != "failed":
         return
     failed = read(saved)
-    binding = base.digest(base.canonical({"sources": data["source_hashes"], "settings": settings}).encode())
+    binding = base.digest(
+        base.canonical({"sources": data["source_hashes"], "settings": settings}).encode()
+    )
     require(failed["binding"] == binding, "Failed vote binding changed")
     paths = sorted(folder.glob(f"retries/{name}-attempt-*"))
     candidates = [p / f"{name}.stream.jsonl" for p in paths] + [folder / f"{name}.stream.jsonl"]
@@ -71,13 +102,33 @@ def recover_failed(folder, name, settings, data):
         except (ValueError, KeyError) as exc:
             errors.append(str(exc))
             continue
-        require(path.with_name(f"{name}.prompt.txt").read_text() == (folder / f"{name}.prompt.txt").read_text(),
-                "Retry prompt changed")
+        require(
+            path.with_name(f"{name}.prompt.txt").read_text()
+            == (folder / f"{name}.prompt.txt").read_text(),
+            "Retry prompt changed",
+        )
         original.frozen(folder / f"{name}.failed-before-recovery.json", failed)
-        base.save(saved, {**vote, "status": "complete", "binding": binding,
-                          "prompt_sha256": failed["prompt_sha256"]})
-        print(base.canonical({"event": "recovered", "folder": str(folder), "persona": name,
-                              "score": vote["score"], "selected_raw": str(path)}), flush=True)
+        base.save(
+            saved,
+            {
+                **vote,
+                "status": "complete",
+                "binding": binding,
+                "prompt_sha256": failed["prompt_sha256"],
+            },
+        )
+        print(
+            base.canonical(
+                {
+                    "event": "recovered",
+                    "folder": str(folder),
+                    "persona": name,
+                    "score": vote["score"],
+                    "selected_raw": str(path),
+                }
+            ),
+            flush=True,
+        )
         return
     raise ValueError(f"No format-only recovery possible: {errors}")
 
@@ -90,20 +141,28 @@ def main():
         original.frozen(OUTPUT / "sources.json", sources)
         original.frozen(OUTPUT / "solver-identity.json", identities)
         protocol_check(settings, "claude")
-        policy = {"authorized": "User confirmed reviewer fallback inclusion and continuation September 6, 2026",
-                  "allowed_fallback": "Opus 5 to Opus 4.8, explicit session-level refusal event required",
-                  "format_recovery": "Only escape unescaped quotes in backtick code; retain earliest recoverable rating",
-                  "new_calls_for_existing_recoverable_votes": 0,
-                  "malformed_retry_limit": 1, "quota_stop_fraction": .80,
-                  "source_sha256": {p.name: base.digest(p.read_bytes()) for p in
-                                    (Path(__file__), Path(__file__).with_name("review_format.py"))}}
+        policy = {
+            "authorized": "User confirmed reviewer fallback inclusion and continuation September 6, 2026",
+            "allowed_fallback": "Opus 5 to Opus 4.8, explicit session-level refusal event required",
+            "format_recovery": "Only escape unescaped quotes in backtick code; retain earliest recoverable rating",
+            "new_calls_for_existing_recoverable_votes": 0,
+            "malformed_retry_limit": 1,
+            "quota_stop_fraction": 0.80,
+            "source_sha256": {
+                p.name: base.digest(p.read_bytes())
+                for p in (Path(__file__), Path(__file__).with_name("review_format.py"))
+            },
+        }
         original.frozen(OUTPUT / "continuation-policy.json", policy)
         if (OUTPUT / "pause.json").exists():
             (OUTPUT / "pause.json").rename(OUTPUT / "pause-before-continuation.json")
 
         def guarded(prompt, folder, name, config):
             executable = Path(config["claude"])
-            require(base.digest(executable.read_bytes()) == config["binary_sha256"], "Reviewer binary changed")
+            require(
+                base.digest(executable.read_bytes()) == config["binary_sha256"],
+                "Reviewer binary changed",
+            )
             latest = max(OUTPUT.rglob("*.stream.jsonl"), key=lambda p: p.stat().st_mtime)
             require(quota_ok(original.quota_from(latest)), "Claude quota guard paused")
             try:
@@ -133,11 +192,22 @@ def main():
                     recover_failed(folder, name, settings, data)
                 rec = base.judge_run(run, original.TASKS, OUTPUT, settings)
                 status = original.report(OUTPUT)
-                print(base.canonical({"reviewer": "claude", "effort": rec["solver_effort"],
-                                      "task": rec["task_id"], "completed": status["completed_runs"]}), flush=True)
+                print(
+                    base.canonical(
+                        {
+                            "reviewer": "claude",
+                            "effort": rec["solver_effort"],
+                            "task": rec["task_id"],
+                            "completed": status["completed_runs"],
+                        }
+                    ),
+                    flush=True,
+                )
         except Exception as exc:
             original.report(OUTPUT)
-            base.save(OUTPUT / "pause.json", {"error": str(exc), "at": datetime.now(UTC).isoformat()})
+            base.save(
+                OUTPUT / "pause.json", {"error": str(exc), "at": datetime.now(UTC).isoformat()}
+            )
             raise
 
 

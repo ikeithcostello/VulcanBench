@@ -9,10 +9,18 @@ from harness import maintenance_review as review
 
 
 def example():
-    return {"score": 75, "rationale": "Readable small implementation.",
-            "dimensions": {d: {"score": 3, "excerpt": "def fee(kind, units):",
-                               "consequence": "The interface is explicit."}
-                           for d in review.DIMENSIONS}}
+    return {
+        "score": 75,
+        "rationale": "Readable small implementation.",
+        "dimensions": {
+            d: {
+                "score": 3,
+                "excerpt": "def fee(kind, units):",
+                "consequence": "The interface is explicit.",
+            }
+            for d in review.DIMENSIONS
+        },
+    }
 
 
 def test_controls_preserve_functionality():
@@ -76,8 +84,10 @@ def test_saved_vote_bound_to_prompt(tmp_path, monkeypatch):
     folder = tmp_path / "calls/astra/primary/submission-001"
     folder.mkdir(parents=True)
     vote = example()
-    vote["binding"] = {"protocol_sha256": review.sha(tmp_path / "protocol.json"),
-                       "prompt_sha256": review.base.digest(review.prompt(evidence).encode())}
+    vote["binding"] = {
+        "protocol_sha256": review.sha(tmp_path / "protocol.json"),
+        "prompt_sha256": review.base.digest(review.prompt(evidence).encode()),
+    }
     review.freeze(folder / "selected.json", vote)
     assert review.call("astra", "primary", "submission-001", evidence, {})["score"] == 75
     changed = copy.deepcopy(evidence)
@@ -88,7 +98,9 @@ def test_saved_vote_bound_to_prompt(tmp_path, monkeypatch):
 
 def test_claude_fallback_rejected(tmp_path, monkeypatch):
     monkeypatch.setattr(review, "OUT", tmp_path)
-    events = [{"type": "system", "subtype": "init", "apiKeySource": "none"},
-              {"type": "assistant", "message": {"model": "claude-opus-4-8"}}]
+    events = [
+        {"type": "system", "subtype": "init", "apiKeySource": "none"},
+        {"type": "assistant", "message": {"model": "claude-opus-4-8"}},
+    ]
     with pytest.raises(RuntimeError, match="identity"):
         review.claude_identity_and_quota("\n".join(json.dumps(e) for e in events))
