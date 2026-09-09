@@ -90,7 +90,7 @@ def report(output):
     return result
 
 
-def main():
+def main():  # noqa: PLR0915
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--reviewer", choices=("astra", "claude"), required=True)
     parser.add_argument("--limit", type=int)

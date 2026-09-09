@@ -7,19 +7,19 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-from harness import retrospective_judging as base
-from harness.claude_retrospective import parse
-from harness.evaluator.reviewed_score import reviewed_score
+from harness import retrospective_judging as base  # noqa: E402
+from harness.claude_retrospective import parse  # noqa: E402
+from harness.evaluator.reviewed_score import reviewed_score  # noqa: E402
 
 
-def main():
+def main():  # noqa: PLR0915
     output = ROOT / "runs-astra-cii-v4-claude-judging-v1"
     settings = json.loads((output / "protocol.json").read_text())
     sources = json.loads((output / "sources.json").read_text())
     assert len(sources) == 115
     rows, votes, sessions = [], [], set()
-    for run, hashes in sources.items():
-        run = Path(run)
+    for source, hashes in sources.items():
+        run = Path(source)
         data = base.inputs(run, ROOT / "tasks/coding-intelligence-index-v4")
         assert data["source_hashes"] == hashes
         folder = output / run.parent.name / run.name

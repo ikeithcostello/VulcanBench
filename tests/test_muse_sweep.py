@@ -49,6 +49,9 @@ def test_envelope_and_idempotent_reporting(tmp_path, monkeypatch):
         sweep.result_summary({"run_id": "run-1", "summary": summary})
 
 
+@pytest.mark.skipif(
+    not (sweep.ROOT / ".venv/bin/python").exists(), reason="needs the local grader virtualenv"
+)
 def test_grader_preflight_repairs_sparse_launchd_path(monkeypatch):
     monkeypatch.setenv("PATH", "/usr/bin:/bin")
     sweep.grader_preflight()

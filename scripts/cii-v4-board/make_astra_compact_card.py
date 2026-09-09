@@ -13,6 +13,7 @@ import statistics
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
@@ -24,7 +25,7 @@ LEVELS = ["low", "medium", "high", "extra-high", "max"]
 PAPER, INK, GREEN = "#f7f5f0", "#171917", "#10A37F"
 
 
-def main():
+def main():  # noqa: PLR0915
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--quality-33", action="store_true", help="Preview 33 percent code quality with other weights scaled proportionally")
     args = parser.parse_args()
@@ -81,12 +82,13 @@ def main():
     logo = fig.add_axes([.045, .912, .034, .06])
     mark = logo.imshow(plt.imread(ROOT / "docs/assets/vulcanbench-logo.png"))
     clip = FancyBboxPatch((0,0),1,1, boxstyle="round,pad=0,rounding_size=.22", transform=logo.transAxes)
-    mark.set_clip_path(clip); logo.axis("off")
+    mark.set_clip_path(clip)
+    logo.axis("off")
     text(.09, .944, "VulcanBench", 20, True, heading=True)
     text(.955, .944, "REPORT 23  ·  SEPTEMBER 2026", 11, ha="right")
     rule(.893)
     text(.045, .839, "GPT-6 Astra", 34, True, heading=True)
-    text(.045, .791, "VulcanBench-SWE v4 · 23 tasks × 5 efforts · 115 runs", 16)
+    text(.045, .791, "VulcanBench-SWE v4 · 23 tasks × 5 efforts · 115 runs", 16)  # noqa: RUF001
     text(.955, .791, "Python replacements: 23/23 · C-built binaries: 23/23", 12, ha="right")
     if args.quality_33:
         text(.955, .839, "PROPOSED WEIGHTS · 33% CODE QUALITY", 13, True, ha="right")
@@ -102,12 +104,15 @@ def main():
     # The same figure-space row centers align chart points and table cells.
     row_y = [.60, .5475, .495, .4425, .39]
     combined = fig.add_axes([.16, .36, .195, .27], facecolor=PAPER)
-    combined.set_xlim(*score_limits); combined.set_ylim(.36, .63)
+    combined.set_xlim(*score_limits)
+    combined.set_ylim(.36, .63)
     ax = fig.add_axes([.455, .36, .195, .27], facecolor=PAPER)
     runtime = fig.add_axes([.75, .36, .15, .27], facecolor=PAPER)
-    ax.set_xlim(80, 88); ax.set_ylim(.36, .63)
-    runtime.set_xlim(0, 14); runtime.set_ylim(.36, .63)
-    for r, y in zip(rows, row_y):
+    ax.set_xlim(80, 88)
+    ax.set_ylim(.36, .63)
+    runtime.set_xlim(0, 14)
+    runtime.set_ylim(.36, .63)
+    for r, y in zip(rows, row_y, strict=True):
         assert score_limits[0] <= r["score"]-r["se"] <= r["score"]+r["se"] <= score_limits[1]
         combined.errorbar(r["score"], y, xerr=r["se"], fmt="D", markersize=8,
                           color=GREEN, markeredgecolor=INK, markeredgewidth=.6,
@@ -125,15 +130,17 @@ def main():
         text(.377, y, f"{r['score']:.2f}", 19, True)
     for chart, ticks in [(combined, [90,91,92] if args.quality_33 else [91,92,93]),
                          (ax,[80,84,88]), (runtime,[0,6,12])]:
-        chart.set_yticks([]); chart.set_xticks(ticks)
+        chart.set_yticks([])
+        chart.set_xticks(ticks)
         chart.tick_params(axis="x", length=0, labelsize=11, pad=8)
         chart.spines[["top", "left", "right"]].set_visible(False)
         chart.spines["bottom"].set_color("#b9b8b0")
-        chart.grid(axis="x", color="#deddd6", lw=.7); chart.set_axisbelow(True)
+        chart.grid(axis="x", color="#deddd6", lw=.7)
+        chart.set_axisbelow(True)
     spread = max(r["score"] for r in rows)-min(r["score"] for r in rows)
     gain = rows[-1]["review"]-rows[0]["review"]
     ratio = rows[-1]["minutes"]/rows[0]["minutes"]
-    text(.045, .303, f"Max vs Low: +{gain:.2f} quality points · {ratio:.2f}× runtime", 17, True)
+    text(.045, .303, f"Max vs Low: +{gain:.2f} quality points · {ratio:.2f}× runtime", 17, True)  # noqa: RUF001
     text(.955, .303, f"Combined spread: {spread:.2f} points", 15, True, ha="right")
     rule(.261)
     formula = ("Combined = 41.875% functional + 12.5625% automated quality + 12.5625% security + 33% code quality"

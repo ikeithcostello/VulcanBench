@@ -5,12 +5,13 @@ import json
 import os
 import subprocess
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from harness.tasks import load_task, prepare_workspace, task_hash
-from harness.regrade import _apply_patch, _git
-from harness.verifier import run_declarative_verifier
+
 from harness.evaluator.evaluate import evaluate_run
+from harness.regrade import _apply_patch, _git
+from harness.tasks import load_task, prepare_workspace, task_hash
+from harness.verifier import run_declarative_verifier
 
 ROOT = Path(__file__).resolve().parents[2]
 os.environ["PATH"] = str(ROOT/".venv/bin") + os.pathsep + os.environ["PATH"]
@@ -19,21 +20,22 @@ original = json.loads((run/"summary.json").read_text())
 task = load_task(original["task_id"], ROOT/"tasks/coding-intelligence-index-v4")
 assert task_hash(task) == original["task_hash"]
 patch = (run/"final.patch").read_text()
-receipt = {"at": datetime.now(timezone.utc).isoformat(), "task_hash": task_hash(task),
+receipt = {"at": datetime.now(UTC).isoformat(), "task_hash": task_hash(task),
            "patch_sha256": hashlib.sha256(patch.encode()).hexdigest(), "no_model_calls": True,
            "original_summary_sha256": hashlib.sha256((run/"summary.json").read_bytes()).hexdigest()}
 scratch = Path(tempfile.mkdtemp(prefix="vb-muse-grading-audit-"))
 for label, diff in [("base", ""), ("gold", task.gold_patch.read_text()), ("saved_solution", patch)]:
     ws = scratch/label
     prepare_workspace(task, ws)
-    _git(["init", "-q"],ws); _git(["add", "-A"],ws)
+    _git(["init", "-q"], ws)
+    _git(["add", "-A"], ws)
     _git(["commit", "-q", "--allow-empty", "-m", "base"],ws)
     _apply_patch(ws,diff)
     changed = _git(["diff", "--name-only"],ws).stdout.splitlines()
     if label == "saved_solution":
         bad_env = {**os.environ, "PATH": "/Users/morganlinton/.local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"}
-        p = subprocess.run("PYTHONPATH=. python -m pytest --version",shell=True,cwd=ws,
-                           env=bad_env,capture_output=True,text=True)
+        p = subprocess.run("PYTHONPATH=. python -m pytest --version", shell=True, cwd=ws,
+                           env=bad_env, capture_output=True, text=True, check=False)
         receipt["original_path_probe"] = {"exit":p.returncode,"stdout":p.stdout,"stderr":p.stderr}
     verified = run_declarative_verifier(task,ws)
     receipt[label] = verified

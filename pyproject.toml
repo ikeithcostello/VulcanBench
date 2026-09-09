@@ -98,6 +98,7 @@ harness = ["data/cost_priors.json"]
 [tool.ruff]
 target-version = "py312"
 line-length = 100
+force-exclude = true  # honour the exclude list for explicitly named files too
 exclude = [
   ".git",
   ".venv",
@@ -106,6 +107,15 @@ exclude = [
   "tasks",  # task fixtures include intentionally-buggy code + per-language tests
   "exports",  # generated benchmark exports mirror task fixtures verbatim
   "dashboard",
+  # Frozen by the Code quality protocol: runs-code-quality-maintenance-*/protocol.json
+  # binds these files by SHA-256, so lint or format edits would invalidate the record.
+  "docs/judging/controls-v3",
+  "harness/maintenance_review_v3.py",
+  "harness/maintenance_review_v2.py",
+  "harness/retrospective_judging.py",
+  "harness/claude_retrospective.py",
+  "harness/claude_review_guard.py",
+  "harness/evaluator/readability_signals.py",
 ]
 
 [tool.ruff.lint]

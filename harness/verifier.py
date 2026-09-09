@@ -20,8 +20,8 @@ verification happens in the same isolated, reproducible environment as the run.
 
 from __future__ import annotations
 
-import subprocess
 import re
+import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path

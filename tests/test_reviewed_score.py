@@ -1,6 +1,6 @@
 import pytest
 
-from harness.evaluator.reviewed_score import WEIGHTS, reviewed_score
+from harness.evaluator.reviewed_score import WEIGHTS, WEIGHTS_V3, reviewed_score
 
 
 def test_weights_and_perfect():
@@ -24,8 +24,6 @@ def test_missing_or_invalid(value):
 
 
 def test_v3_weights_lock_code_quality_at_a_third():
-    from harness.evaluator.reviewed_score import WEIGHTS_V3
-
     assert sum(WEIGHTS_V3.values()) == pytest.approx(1)
     assert WEIGHTS_V3["human_like"] == .33
     assert WEIGHTS_V3["quality"] == WEIGHTS_V3["security"] == .085

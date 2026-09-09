@@ -1,7 +1,5 @@
 from pathlib import Path
 
-import pytest
-
 from harness.evaluator.readability_signals import analyze_files, analyze_source
 
 CONTROLS = Path(__file__).resolve().parents[1] / "docs" / "judging" / "controls-v3"

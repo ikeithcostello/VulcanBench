@@ -1,10 +1,10 @@
 """Read-only aggregation of the separate maintenance-review protocol."""
 
-from collections import defaultdict
-from datetime import UTC, datetime
 import json
 import math
 import statistics
+from collections import defaultdict
+from datetime import UTC, datetime
 
 from harness import maintenance_review_v2 as review
 
@@ -24,7 +24,7 @@ def composite(row, quality, weight):
                   + other * row["security"] + weight * quality / 100)
 
 
-def summarize():
+def summarize():  # noqa: PLR0912, PLR0915
     protocol = review.verify_frozen()
     manifest = review.read(review.OUT / "private-manifest.json")
     selection = review.read(review.OUT / "diagnostic-selection.json")

@@ -26,7 +26,7 @@ def suite(level: str) -> dict:
     raise RuntimeError(f"no valid suite result for {level}")
 
 
-def main() -> None:
+def main() -> None:  # noqa: PLR0915
     rows = [(label, suite(level)) for level, label in LEVELS]
     total_tokens = sum(row["total_tokens"] for _, row in rows)
     fig = plt.figure(figsize=(16, 9), dpi=100, facecolor=PAPER)
@@ -41,7 +41,8 @@ def main() -> None:
     text(.045, .955, "V U L C A N B E N C H", 12, "bold")
     text(.163, .955, "T E C H N I C A L   R E P O R T   N O .  2 3", 12, color=GREY)
     text(.955, .955, "S E P T E M B E R   2 0 2 6   ·   2 3   T A S K S   ·   1   M O D E L   ·   5   E F F O R T   L E V E L S   ·   1 2 . 0  H", 9.5, color=GREY, ha="right")
-    rule(.936, lw=1.6); rule(.9315, lw=.7)
+    rule(.936, lw=1.6)
+    rule(.9315, lw=.7)
     text(.5, .876, "GPT-6 Astra, Effort Sweep", 28, "bold", ha="center")
     text(.5, .828, "VulcanBench-SWE v4, twenty-three opaque legacy binaries scored across four computed factors", 14, style="italic", ha="center")
     text(.5, .782, "100.0% pass@1 (23/23) from Medium through Max; Low reached 95.7% (22/23).", 15, "bold", ha="center")
@@ -51,7 +52,8 @@ def main() -> None:
     cols = [(.045, "Effort", "left"), (.190, "pass@1", "right"), (.280, "Solved", "right"), (.390, "Tokens", "right"), (.495, "Time/task", "right"), (.580, "Aggregate", "right")]
     y0 = .612
     rule(y0+.020, .045, .580)
-    for x, name, align in cols: text(x, y0, name, 11.5, "bold", ha=align)
+    for x, name, align in cols:
+        text(x, y0, name, 11.5, "bold", ha=align)
     rule(y0-.016, .045, .580, .7)
     for i, (label, row) in enumerate(rows):
         y = y0-.050-i*.040
@@ -84,13 +86,17 @@ def main() -> None:
     passes = [row["pass_at_1"]*100 for _, row in rows]
     mins = [row["avg_duration_s"]/60 for _, row in rows]
     for ax, values, title, top in [(ax1, passes, "Functional pass@1", 105), (ax2, mins, "Mean minutes per task", 12)]:
-        ax.bar(range(5), values, color=[PALE]+[MID, MID, NAVY, NAVY], width=.62)
-        ax.set_ylim(0, top); ax.set_xticks(range(5), labels, rotation=40, ha="right", fontsize=8.5, fontfamily="Baskerville")
+        ax.bar(range(5), values, color=[PALE, MID, MID, NAVY, NAVY], width=.62)
+        ax.set_ylim(0, top)
+        ax.set_xticks(range(5), labels, rotation=40, ha="right", fontsize=8.5, fontfamily="Baskerville")
         ax.set_title(title, fontsize=11, fontfamily="Baskerville", pad=8)
         ax.tick_params(axis="y", labelsize=8.5, length=0, colors=GREY)
-        ax.spines[["top", "right", "left"]].set_visible(False); ax.spines["bottom"].set_color(RULE)
-        ax.grid(axis="y", color="#d9d5cc", linewidth=.6); ax.set_axisbelow(True)
-        for j, value in enumerate(values): ax.text(j, value+top*.018, f"{value:.1f}", ha="center", va="bottom", fontsize=8.5, color=INK, fontfamily="Baskerville")
+        ax.spines[["top", "right", "left"]].set_visible(False)
+        ax.spines["bottom"].set_color(RULE)
+        ax.grid(axis="y", color="#d9d5cc", linewidth=.6)
+        ax.set_axisbelow(True)
+        for j, value in enumerate(values):
+            ax.text(j, value+top*.018, f"{value:.1f}", ha="center", va="bottom", fontsize=8.5, color=INK, fontfamily="Baskerville")
     rule(.115)
     text(.045, .078, "Method.", 10.5, "bold")
     text(.105, .078, "VulcanBench-SWE v4, 23 tasks, GPT-6 Astra through Codex, one Apple Silicon machine, one attempt per task and effort level.", 9.5)

@@ -6,8 +6,8 @@ Comparison bars: combined task means, zero baseline, task-level sample SE.
 Single OpenAI green root, direct labels; static PNG, inspected after rendering.
 Explicit revised profile excludes efficiency and keeps legacy scores unchanged.
 """
-import json
 import argparse
+import json
 import math
 import statistics
 import sys
@@ -15,19 +15,21 @@ from datetime import datetime
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-from harness.evaluator.reviewed_score import PROFILE, WEIGHTS, reviewed_score
+from harness.evaluator.reviewed_score import PROFILE, WEIGHTS, reviewed_score  # noqa: E402
+
 OUT = ROOT / "docs/results/cii-v4-astra-2026-09/report23-gpt6-astra-vulcanbench-swe-v4-combined.png"
 LEVELS = ["low", "medium", "high", "extra-high", "max"]
 PAPER, INK, GREEN = "#f7f5f0", "#171917", "#10A37F"
 
 
-def main():
+def main():  # noqa: PLR0912, PLR0915
     parser = argparse.ArgumentParser()
     parser.add_argument("--panel", action="store_true")
     args = parser.parse_args()
@@ -57,7 +59,7 @@ def main():
             mean = statistics.mean(r["panel"] * 100 for r in panel_rows)
             claude_mean = statistics.mean(r["claude"] * 100 for r in panel_rows)
         combined = [reviewed_score({**run["scores"], "human_like": judge["human_like"]}) * 100
-                    for run, judge in zip(runs, judged)]
+                    for run, judge in zip(runs, judged, strict=True)]
         if panel_report:
             combined = [r["combined"] * 100 for r in panel_rows]
         else:
@@ -82,7 +84,8 @@ def main():
         fig.add_artist(plt.Line2D([left, right], [y, y], transform=fig.transFigure, color=INK, lw=.8))
 
     logo = fig.add_axes([.045, .919, .033, .054])
-    logo.imshow(plt.imread(ROOT / "docs/assets/vulcanbench-logo.png")); logo.axis("off")
+    logo.imshow(plt.imread(ROOT / "docs/assets/vulcanbench-logo.png"))
+    logo.axis("off")
     text(.088, .946, "VULCANBENCH", 22, True, heading=True)
     text(.955, .946, "TECHNICAL REPORT 23  /  SEPTEMBER 5, 2026", 13, ha="right")
     rule(.903)
@@ -95,14 +98,16 @@ def main():
     if panel_report:
         cols = [(.045, "Effort"), (.18, "Astra"), (.26, "Claude"), (.35, "Panel"), (.44, "Passed"), (.51, "Tokens")]
     rule(.658, right=.565)
-    for x, title in cols: text(x, .633, title, 15, True)
+    for x, title in cols:
+        text(x, .633, title, 15, True)
     rule(.61, right=.565)
     for i, r in enumerate(rows):
         y = .573 - i * .047
         vals = [r["effort"], f"{r['mean']:.2f}", f"{r['solved']}/23", f"{r['tokens']/1e6:.2f} M", f"{r['minutes']:.2f}"]
         if panel_report:
             vals = [r["effort"], f"{r['astra']:.2f}", f"{r['claude']:.2f}", f"{r['mean']:.2f}", f"{r['solved']}/23", f"{r['tokens']/1e6:.2f}M"]
-        for (x, _), val in zip(cols, vals): text(x, y, val, 16)
+        for (x, _), val in zip(cols, vals, strict=True):
+            text(x, y, val, 16)
     rule(.354, right=.565)
     text(.045, .327, "Low partial: PaddockCore, 14/15 functional families passed.", 13)
 
@@ -113,11 +118,14 @@ def main():
         ax.barh(i, r["combined"], height=.55, color=GREEN, xerr=r["se"],
                 error_kw={"ecolor": INK, "capsize": 4, "elinewidth": 1.2})
         ax.text(3, i, f"{r['combined']:.2f} ± {r['se']:.2f}", va="center", fontsize=13, color="#101510", weight="bold")
-    ax.set_xlim(0, 100); ax.set_ylim(4.65, -.65)
+    ax.set_xlim(0, 100)
+    ax.set_ylim(4.65, -.65)
     ax.set_yticks(range(5), [r["effort"] for r in rows], fontsize=13)
-    ax.set_xticks([0, 25, 50, 75, 100]); ax.tick_params(length=0, labelsize=12, pad=8)
+    ax.set_xticks([0, 25, 50, 75, 100])
+    ax.tick_params(length=0, labelsize=12, pad=8)
     ax.spines[["top", "right", "left"]].set_visible(False)
-    ax.grid(axis="x", color="#d8d7d0", lw=.6); ax.set_axisbelow(True)
+    ax.grid(axis="x", color="#d8d7d0", lw=.6)
+    ax.set_axisbelow(True)
     text(.62, .327, "Combined score, not a task pass percentage.", 13, True)
 
     rule(.292)

@@ -102,7 +102,7 @@ def short(task_id: str) -> str:
     return task_id.replace("legacy-", "").split("-binary")[0].split("-order")[0].split("-store")[0]
 
 
-def main() -> None:  # noqa: PLR0912, PLR0915, linear top-to-bottom page layout
+def main() -> None:  # noqa: PLR0915, linear top-to-bottom page layout
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
         "--runs",

@@ -2755,7 +2755,9 @@ def get_cli_agent_adapter(spec_or_name: str) -> CliAgentAdapter:
     """Resolve a harness name or ``harness:model`` spec to its adapter."""
     name = spec_or_name.partition(":")[0].strip().lower()
     if name == "muse-code":
-        from harness.agent.muse_code import MuseCodeAdapter
+        # Imported lazily: muse_code depends on this module, so a top-level import would cycle.
+        from harness.agent.muse_code import MuseCodeAdapter  # noqa: PLC0415
+
         return MuseCodeAdapter()
     try:
         return _CLI_AGENT_ADAPTERS[name]

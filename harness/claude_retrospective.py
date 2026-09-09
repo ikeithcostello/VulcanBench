@@ -4,12 +4,12 @@ import fcntl
 import json
 import math
 import os
-from pathlib import Path
 import signal
 import subprocess
 import tempfile
 import time
 from datetime import UTC, datetime
+from pathlib import Path
 
 from harness import retrospective_judging as base
 

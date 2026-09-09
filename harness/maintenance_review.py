@@ -3,21 +3,21 @@
 from __future__ import annotations
 
 import argparse
-from collections import Counter
 import fcntl
 import hashlib
 import json
 import math
-from pathlib import Path
 import random
 import re
 import shutil
 import statistics
 import subprocess
 import tempfile
+from collections import Counter
+from pathlib import Path
 
-from harness import retrospective_judging as base
 from harness import claude_retrospective as claude
+from harness import retrospective_judging as base
 from harness.claude_review_guard import quota_ok
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -111,7 +111,7 @@ def safe_copy(src, dst):
     shutil.copytree(src, dst)
 
 
-def evidence_for(row):
+def evidence_for(row):  # noqa: PLR0912
     data = base.inputs(Path(row["source_directory"]), TASKS)
     if data["source_hashes"] != row["source_hashes"]:
         raise ValueError("Original evidence hash mismatch")
@@ -129,7 +129,7 @@ def evidence_for(row):
     with tempfile.TemporaryDirectory(prefix="vb-review-reconstruct-") as temp:
         work = Path(temp) / "repo"
         safe_copy(TASKS / row["task"] / "repo", work)
-        check = subprocess.run(["git", "apply", "--check", "--"], cwd=work,
+        check = subprocess.run(["git", "apply", "--check", "--"], cwd=work, check=False,
                                input=data["patch"], text=True, capture_output=True)
         patch_bytes = data["patch"].encode()
         recovery = None
@@ -418,9 +418,16 @@ def call(panel, stage, name, evidence, protocol, pair=False):
 def calibrate(panel, protocol):
     evidence = [read(OUT / "controls" / f"control-{i}.json") for i in range(8)]
     votes = [call(panel, "calibration", f"control-{i}", item, protocol) for i, item in enumerate(evidence)]
-    d = lambda i, key: votes[i]["dimensions"][key]["score"]
-    mean = lambda i: statistics.mean(d(i, key) for key in DIMENSIONS)
-    error = lambda i, j: statistics.mean(abs(d(i, key) - d(j, key)) for key in DIMENSIONS)
+
+    def d(i, key):
+        return votes[i]["dimensions"][key]["score"]
+
+    def mean(i):
+        return statistics.mean(d(i, key) for key in DIMENSIONS)
+
+    def error(i, j):
+        return statistics.mean(abs(d(i, key) - d(j, key)) for key in DIMENSIONS)
+
     gates = {
         "clear_anchor": mean(0) >= 3,
         "duplication_sensitivity": max(d(0, "structure") - d(3, "structure"), d(0, "changeability") - d(3, "changeability")) >= .5,
