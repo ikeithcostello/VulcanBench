@@ -155,6 +155,13 @@ def main():
                 "approved_by": "follows the user's standing instruction to keep the sweep going; timeouts were already described to the user as scored failures",
                 "solver_conditions_changed": False,
             },
+            {
+                "at": "2026-09-09T21:20:00+00:00",
+                "change": "Re-pinned source hashes to the versions merged in PR #107 (commit 0faabb8c): type annotations, a run_task wrapper delegating to _run, and ruff formatting",
+                "reason": "The shared checkout moved to a branch carrying the merged files; the diff against the previously pinned sources is cosmetic and the Muse tests pass unchanged",
+                "state_at_amendment": "minimal: 23/23 complete; low through ultra not started",
+                "solver_conditions_changed": False,
+            },
         ],
         "boundary": "Kernel-denied checkout/prior agent sessions/shared temp artifacts; isolated writes and explicit TMPDIR guidance; web tools disabled; shell network not isolated",
         "source_hashes": {
