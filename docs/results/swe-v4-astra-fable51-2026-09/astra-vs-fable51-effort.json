@@ -1,0 +1,477 @@
+{
+  "source": "/Users/morganlinton/dev/VulcanBench/docs/results/swe-v4-astra-fable51-2026-09/comparison.json",
+  "source_sha256": "fc5405e3da76c2b6904013a367f5c98250207f16f7d9195f54f618474b7cbe1e",
+  "groups": [
+    {
+      "model": "astra",
+      "effort": "low",
+      "n": 23,
+      "passed": 22,
+      "fallback_runs": 0,
+      "solver_seconds": 5821.798,
+      "reported_tokens": 20474694,
+      "raw_tokens": 20474694,
+      "combined": {
+        "mean": 91.60173913043478,
+        "se": 0.4441779255156437
+      },
+      "panel": {
+        "mean": 81.89108695652175,
+        "se": 0.6523723018412558
+      },
+      "functional": {
+        "mean": 99.71,
+        "se": 0.2900000000000001
+      },
+      "quality": {
+        "mean": 81.29739130434783,
+        "se": 0.5479816423857826
+      },
+      "security": {
+        "mean": 87.82608695652173,
+        "se": 1.855077610335417
+      },
+      "astra": {
+        "mean": 89.17347826086956,
+        "se": 0.5685762013289416
+      },
+      "claude": {
+        "mean": 74.6086956521739,
+        "se": 0.9069543142853018
+      },
+      "minutes": {
+        "mean": 4.218694202898551,
+        "se": 0.9936658732225679
+      }
+    },
+    {
+      "model": "astra",
+      "effort": "medium",
+      "n": 23,
+      "passed": 23,
+      "fallback_runs": 0,
+      "solver_seconds": 5275.24,
+      "reported_tokens": 15736923,
+      "raw_tokens": 15736923,
+      "combined": {
+        "mean": 91.72858695652174,
+        "se": 0.23469806448814232
+      },
+      "panel": {
+        "mean": 83.04304347826087,
+        "se": 0.4397461245585601
+      },
+      "functional": {
+        "mean": 100.0,
+        "se": 0.0
+      },
+      "quality": {
+        "mean": 81.59695652173913,
+        "se": 0.35496280202743147
+      },
+      "security": {
+        "mean": 85.8695652173913,
+        "se": 1.6826296329038175
+      },
+      "astra": {
+        "mean": 90.20217391304348,
+        "se": 0.3626625063152426
+      },
+      "claude": {
+        "mean": 75.88391304347826,
+        "se": 0.6689079469953481
+      },
+      "minutes": {
+        "mean": 3.8226376811594203,
+        "se": 0.22960227650142065
+      }
+    },
+    {
+      "model": "astra",
+      "effort": "high",
+      "n": 23,
+      "passed": 23,
+      "fallback_runs": 0,
+      "solver_seconds": 6761.87,
+      "reported_tokens": 17652773,
+      "raw_tokens": 17652773,
+      "combined": {
+        "mean": 91.5855652173913,
+        "se": 0.17510434580926942
+      },
+      "panel": {
+        "mean": 85.18152173913045,
+        "se": 0.3922475566902953
+      },
+      "functional": {
+        "mean": 100.0,
+        "se": 0.0
+      },
+      "quality": {
+        "mean": 81.05304347826088,
+        "se": 0.5220064038733873
+      },
+      "security": {
+        "mean": 82.6086956521739,
+        "se": 1.0829967398276885
+      },
+      "astra": {
+        "mean": 91.52260869565218,
+        "se": 0.528137984047911
+      },
+      "claude": {
+        "mean": 78.8404347826087,
+        "se": 0.4722959137475533
+      },
+      "minutes": {
+        "mean": 4.899905797101449,
+        "se": 0.2037660640563361
+      }
+    },
+    {
+      "model": "astra",
+      "effort": "extra-high",
+      "n": 23,
+      "passed": 23,
+      "fallback_runs": 0,
+      "solver_seconds": 11164.886,
+      "reported_tokens": 21331912,
+      "raw_tokens": 21331912,
+      "combined": {
+        "mean": 92.3903695652174,
+        "se": 0.1651478263939305
+      },
+      "panel": {
+        "mean": 86.17391304347827,
+        "se": 0.3711782804284642
+      },
+      "functional": {
+        "mean": 100.0,
+        "se": 0.0
+      },
+      "quality": {
+        "mean": 81.61695652173913,
+        "se": 0.45463768955931205
+      },
+      "security": {
+        "mean": 86.08695652173913,
+        "se": 1.1314984354387065
+      },
+      "astra": {
+        "mean": 92.36304347826086,
+        "se": 0.4252408918714287
+      },
+      "claude": {
+        "mean": 79.98478260869565,
+        "se": 0.4695641194541401
+      },
+      "minutes": {
+        "mean": 8.090497101449275,
+        "se": 0.5844684964850173
+      }
+    },
+    {
+      "model": "astra",
+      "effort": "max",
+      "n": 23,
+      "passed": 23,
+      "fallback_runs": 0,
+      "solver_seconds": 14187.145,
+      "reported_tokens": 21847403,
+      "raw_tokens": 21847403,
+      "combined": {
+        "mean": 92.25321739130435,
+        "se": 0.21350712243418352
+      },
+      "panel": {
+        "mean": 86.53652173913044,
+        "se": 0.30490415697230605
+      },
+      "functional": {
+        "mean": 100.0,
+        "se": 0.0
+      },
+      "quality": {
+        "mean": 80.87130434782608,
+        "se": 0.46541337159732693
+      },
+      "security": {
+        "mean": 85.43478260869566,
+        "se": 1.1295983527623112
+      },
+      "astra": {
+        "mean": 92.52173913043478,
+        "se": 0.36929034185919274
+      },
+      "claude": {
+        "mean": 80.55130434782609,
+        "se": 0.34667209755110806
+      },
+      "minutes": {
+        "mean": 10.280539855072464,
+        "se": 0.514791796730318
+      }
+    },
+    {
+      "model": "fable",
+      "effort": "low",
+      "n": 23,
+      "passed": 19,
+      "fallback_runs": 1,
+      "solver_seconds": 37117.928,
+      "reported_tokens": 15587824,
+      "raw_tokens": 100833634,
+      "combined": {
+        "mean": 91.03630434782609,
+        "se": 1.3117364501165465
+      },
+      "panel": {
+        "mean": 80.71717391304348,
+        "se": 1.8169436077446128
+      },
+      "functional": {
+        "mean": 96.11782608695653,
+        "se": 1.8769270946904937
+      },
+      "quality": {
+        "mean": 82.58869565217391,
+        "se": 0.8266820926758484
+      },
+      "security": {
+        "mean": 96.30434782608695,
+        "se": 2.0181339780584575
+      },
+      "astra": {
+        "mean": 85.91260869565217,
+        "se": 1.599884780608235
+      },
+      "claude": {
+        "mean": 75.52173913043478,
+        "se": 2.1016574159790857
+      },
+      "minutes": {
+        "mean": 26.89704927536232,
+        "se": 7.04209649833395
+      }
+    },
+    {
+      "model": "fable",
+      "effort": "medium",
+      "n": 23,
+      "passed": 20,
+      "fallback_runs": 3,
+      "solver_seconds": 43775.348,
+      "reported_tokens": 21531428,
+      "raw_tokens": 160360100,
+      "combined": {
+        "mean": 91.56089130434782,
+        "se": 1.0855372720129741
+      },
+      "panel": {
+        "mean": 82.43456521739131,
+        "se": 1.6565071983323305
+      },
+      "functional": {
+        "mean": 97.57739130434783,
+        "se": 1.3545861520175344
+      },
+      "quality": {
+        "mean": 83.27869565217391,
+        "se": 0.8689504150714793
+      },
+      "security": {
+        "mean": 91.95652173913044,
+        "se": 3.292990676022303
+      },
+      "astra": {
+        "mean": 87.37608695652173,
+        "se": 1.3381158571241614
+      },
+      "claude": {
+        "mean": 77.49304347826087,
+        "se": 2.06714056907728
+      },
+      "minutes": {
+        "mean": 31.72126666666667,
+        "se": 9.371995047031866
+      }
+    },
+    {
+      "model": "fable",
+      "effort": "high",
+      "n": 23,
+      "passed": 20,
+      "fallback_runs": 2,
+      "solver_seconds": 39690.699,
+      "reported_tokens": 18991317,
+      "raw_tokens": 126230303,
+      "combined": {
+        "mean": 90.97215217391305,
+        "se": 0.9276505148504766
+      },
+      "panel": {
+        "mean": 83.81152173913044,
+        "se": 1.2267787938216954
+      },
+      "functional": {
+        "mean": 98.45782608695652,
+        "se": 0.9593183425848063
+      },
+      "quality": {
+        "mean": 82.62652173913044,
+        "se": 0.8677943529489808
+      },
+      "security": {
+        "mean": 83.91304347826087,
+        "se": 5.048739929468357
+      },
+      "astra": {
+        "mean": 87.72434782608696,
+        "se": 0.9579261249720334
+      },
+      "claude": {
+        "mean": 79.89869565217391,
+        "se": 1.5559762773357286
+      },
+      "minutes": {
+        "mean": 28.76137608695652,
+        "se": 6.825142829108844
+      }
+    },
+    {
+      "model": "fable",
+      "effort": "extra-high",
+      "n": 23,
+      "passed": 22,
+      "fallback_runs": 3,
+      "solver_seconds": 53507.084,
+      "reported_tokens": 17223097,
+      "raw_tokens": 263013721,
+      "combined": {
+        "mean": 91.52895652173913,
+        "se": 0.9257018253624069
+      },
+      "panel": {
+        "mean": 84.95673913043478,
+        "se": 1.280110181178975
+      },
+      "functional": {
+        "mean": 99.1304347826087,
+        "se": 0.8695652173913044
+      },
+      "quality": {
+        "mean": 83.22173913043478,
+        "se": 0.8035149196845673
+      },
+      "security": {
+        "mean": 83.26086956521739,
+        "se": 5.386345417969151
+      },
+      "astra": {
+        "mean": 89.62304347826087,
+        "se": 0.995689808909506
+      },
+      "claude": {
+        "mean": 80.2904347826087,
+        "se": 1.6193033292252161
+      },
+      "minutes": {
+        "mean": 38.77324927536232,
+        "se": 10.483612671413571
+      }
+    },
+    {
+      "model": "fable",
+      "effort": "max",
+      "n": 23,
+      "passed": 23,
+      "fallback_runs": 2,
+      "solver_seconds": 37392.971,
+      "reported_tokens": 15532297,
+      "raw_tokens": 87936207,
+      "combined": {
+        "mean": 92.89621739130435,
+        "se": 0.4922300656960982
+      },
+      "panel": {
+        "mean": 85.36304347826086,
+        "se": 0.3957553616038381
+      },
+      "functional": {
+        "mean": 100.0,
+        "se": 0.0
+      },
+      "quality": {
+        "mean": 82.15739130434783,
+        "se": 0.6517020031772034
+      },
+      "security": {
+        "mean": 90.0,
+        "se": 3.236403605917417
+      },
+      "astra": {
+        "mean": 89.24652173913043,
+        "se": 0.5553155313921952
+      },
+      "claude": {
+        "mean": 81.47956521739131,
+        "se": 0.397492873260432
+      },
+      "minutes": {
+        "mean": 27.09635579710145,
+        "se": 3.764144230041088
+      }
+    }
+  ],
+  "tradeoffs_vs_each_models_highest_observed_score": {
+    "astra_low": {
+      "baseline_effort": "extra-high",
+      "score_gap": 0.7886304347826183,
+      "runtime_reduction_pct": 47.85618052884731,
+      "raw_token_reduction_pct": 4.018477106037189
+    },
+    "astra_medium": {
+      "baseline_effort": "extra-high",
+      "score_gap": 0.6617826086956597,
+      "runtime_reduction_pct": 52.75151040503234,
+      "raw_token_reduction_pct": 26.228258395215587
+    },
+    "fable_low": {
+      "baseline_effort": "max",
+      "score_gap": 1.859913043478258,
+      "runtime_reduction_pct": 0.735547330539732,
+      "raw_token_reduction_pct": -14.666799308275834
+    },
+    "fable_medium": {
+      "baseline_effort": "max",
+      "score_gap": 1.3353260869565275,
+      "runtime_reduction_pct": -17.068386997117724,
+      "raw_token_reduction_pct": -82.35958255511294
+    }
+  },
+  "axes": {
+    "combined": [
+      89,
+      94.5
+    ],
+    "minutes": [
+      0,
+      55
+    ]
+  },
+  "tokens": "Raw mean per task, including cache; not API dollars",
+  "notes": [
+    "11 of 115 Fable runs switched to Opus 4.8 after refusal; all are included.",
+    "Model plus harness comparison, not isolated base-model performance.",
+    "Code quality is an equal Astra/Claude LLM panel, not human ground truth; bias remains possible.",
+    "Reviewer prompts and effort match; Claude CLI was 2.1.260 for Astra and 2.1.261 for Fable.",
+    "Astra reviewer identity is requested-only because its stream lacks a model receipt.",
+    "Runtime is summed solver duration or mean per task, excluding post-hoc judging and pauses between tasks.",
+    "Raw tokens are reconstructed from CLI result receipts, including cache reads and writes. Auxiliary model accounting may differ by CLI.",
+    "Fable historical summaries contain cache-price-weighted units and omit earlier usage in four multi-result runs; these summaries are preserved but not compared as raw tokens.",
+    "Whiskers show one sample SE across 23 tasks, not judge uncertainty or a significance test."
+  ],
+  "png_sha256": "2dc0dce692d212dfb0194ddede5014b9cec09045634f31e5e87a88ea3bae4ee7",
+  "svg_sha256": "1d89cd886d443b4f18d8b1f05045e0d705cd32ca7d223bea79ddb59dd15eb99b",
+  "visual_qa": "Requires inspection after rendering"
+}

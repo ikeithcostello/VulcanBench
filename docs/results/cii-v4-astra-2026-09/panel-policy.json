@@ -1,0 +1,11 @@
+{
+  "profile": "swe-v4-reviewed-equal-panel-2026-09-05",
+  "authorization": "User approved finishing reviews, recalculating scores and creating the updated card following the equal-weight panel recommendation",
+  "reviewer_weights": {"gpt-6-astra-medium": 0.5, "claude-opus-5-medium": 0.5},
+  "factor_weights": {"functional": 0.5, "quality": 0.15, "security": 0.15, "human_like": 0.2},
+  "task_weighting": "Equal weight across 23 tasks within each effort",
+  "missing_votes": "No panel score until all three personas from both models are valid",
+  "retry_policy": "One malformed-JSON retry per affected call; preserve all attempts and count all usage",
+  "disclosure": "Retrospective scoring policy selected after observing some reviewer results; not a preregistered evaluation",
+  "historical_artifacts": "Preserved; panel output written separately"
+}

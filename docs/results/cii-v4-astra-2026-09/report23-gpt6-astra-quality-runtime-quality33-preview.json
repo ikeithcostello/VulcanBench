@@ -1,0 +1,94 @@
+{
+  "source": "/Users/morganlinton/dev/VulcanBench/runs-astra-cii-v4-claude-judging-v1/verification.json",
+  "source_profile": "swe-v4-reviewed-equal-panel-2026-09-05",
+  "profile": "proposed-quality33-proportional-preview",
+  "weights": {
+    "functional": 0.41874999999999996,
+    "quality": 0.125625,
+    "security": 0.125625,
+    "panel": 0.33
+  },
+  "proposed": true,
+  "charts": {
+    "review": {
+      "type": "dot and interval",
+      "range": [
+        80,
+        88
+      ]
+    },
+    "runtime": {
+      "type": "bar and interval",
+      "range": [
+        0,
+        14
+      ]
+    }
+  },
+  "interval": "one sample SE across tasks",
+  "rows": [
+    {
+      "effort": "Low",
+      "score": 90.02375815217391,
+      "baseline_score": 91.60173913043478,
+      "se": 0.44112277644033365,
+      "review": 81.89108695652175,
+      "review_se": 0.6523723018412558,
+      "passed": 22,
+      "minutes": 4.218694202898551,
+      "minutes_se": 0.9936658732225679,
+      "tokens": 20474694
+    },
+    {
+      "effort": "Medium",
+      "score": 90.31718614130435,
+      "baseline_score": 91.72858695652174,
+      "se": 0.1973728395662464,
+      "review": 83.04304347826087,
+      "review_se": 0.4397461245585601,
+      "passed": 23,
+      "minutes": 3.8226376811594203,
+      "minutes_se": 0.22960227650142065,
+      "tokens": 15736923
+    },
+    {
+      "effort": "High",
+      "score": 90.5449081521739,
+      "baseline_score": 91.5855652173913,
+      "se": 0.16451564675441877,
+      "review": 85.18152173913045,
+      "review_se": 0.3922475566902953,
+      "passed": 23,
+      "minutes": 4.899905797101449,
+      "minutes_se": 0.2037660640563361,
+      "tokens": 17652773
+    },
+    {
+      "effort": "Extra-high",
+      "score": 91.38019538043478,
+      "baseline_score": 92.3903695652174,
+      "se": 0.13753923863528525,
+      "review": 86.17391304347827,
+      "review_se": 0.3711782804284642,
+      "passed": 23,
+      "minutes": 8.090497101449277,
+      "minutes_se": 0.5844684964850173,
+      "tokens": 21331912
+    },
+    {
+      "effort": "Max",
+      "score": 91.32425434782608,
+      "baseline_score": 92.25321739130435,
+      "se": 0.1914062355724907,
+      "review": 86.53652173913044,
+      "review_se": 0.30490415697230605,
+      "passed": 23,
+      "minutes": 10.280539855072464,
+      "minutes_se": 0.514791796730318,
+      "tokens": 21847403
+    }
+  ],
+  "score_spread": 1.356437228260873,
+  "max_low_review_gain": 4.645434782608689,
+  "max_low_runtime_ratio": 2.436900936789631
+}

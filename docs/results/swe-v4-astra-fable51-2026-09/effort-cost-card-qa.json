@@ -1,0 +1,14 @@
+{
+  "artifact": "astra-vs-fable51-effort-cost.png",
+  "source_sha256": "fc5405e3da76c2b6904013a367f5c98250207f16f7d9195f54f618474b7cbe1e",
+  "cost_source_sha256": "7fa4c18e7c8045b74a9b06527d30c38a0d652d2f7fbeff3029e0e4a3fdf15883",
+  "png_sha256": "5a9c9bfb1af9cdae1807d0aeb55f443391834053c20903a3b7c462aa210d39e2",
+  "svg_sha256": "1832807a2d6a1aef8cd98357136b450801167d6f425b01057d683eaf45d5ff4f",
+  "assessment": "Share with disclosed estimation caveats",
+  "visual_checks": "Final 2400x1620 PNG inspected. Total score and runtime each use ten grouped bars with Astra on the left and hatched Fable on the right at each effort. Total score uses a full zero-to-100 percent scale and the unchanged 50/15/15/20 weighted percentages. Runtime retains its zero baseline and unchanged mean-minute values. Both retain sample SE whiskers. Labels, costs, sample size and fallback caveats remain legible without overlap. Benchmark and cost source hashes are unchanged; renderer lint passes.",
+  "calculation_checks": "230 source streams verified against frozen hashes. Ten complete groups have 23 costed runs each. Per-run and per-effort totals reconcile. All 252 Claude model-level cost entries fall within verified cache-duration rate bounds; 251 independently recompute and one auxiliary Opus 5 list receipt matches 5m pricing. Astra cache and reasoning inclusions are not double-counted.",
+  "tests": "12 focused tests passed across test_api_equivalent_costs.py and test_solver_receipts.py with --no-cov; lint passes for the new ledger, its tests and the modified renderer. This is not a full-repository test result.",
+  "scope": "API-equivalent solver inference costs, not subscription charges, excluding post-hoc judges and local infrastructure. Standard pricing checked September 6, 2026. No Fast/Batch/Flex/regional modifiers.",
+  "uncertainty": "Astra per-request sizes are absent. Central estimate $225.037978 assumes short-context rates; conservative long-context bound $419.415060. Fable estimate $1159.1011435 includes exposed auxiliary/fallback calls. Astra is cheaper at every matched effort under either scenario.",
+  "preserved": "Original grades, weights, votes, summaries, cost-free output images and unrelated harness work are unchanged."
+}

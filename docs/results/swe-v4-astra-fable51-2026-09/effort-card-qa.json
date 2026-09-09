@@ -1,0 +1,11 @@
+{
+  "artifact": "astra-vs-fable51-effort.png",
+  "source_sha256": "fc5405e3da76c2b6904013a367f5c98250207f16f7d9195f54f618474b7cbe1e",
+  "png_sha256": "2dc0dce692d212dfb0194ddede5014b9cec09045634f31e5e87a88ea3bae4ee7",
+  "svg_sha256": "1d89cd886d443b4f18d8b1f05045e0d705cd32ca7d223bea79ddb59dd15eb99b",
+  "assessment": "Share with caveats",
+  "visual_checks": "Final PNG inspected. Both models at all five efforts are visible on shared score and runtime axes. All numeric labels and whiskers fit; table identities, sample size, focused score scale and fallback disclosures are explicit.",
+  "numerical_checks": "Independently recomputed all ten groups' means, sample SE, full-pass counts and raw token totals from task rows. Verified the fixed weighted formula for all 230 rows and checked source/output hashes. Renderer lint passes.",
+  "interpretation": "Astra Medium compared with Extra-high: 0.6618-point lower score, 52.7515% less runtime, 26.2283% fewer raw tokens. Fable Low compared with Max: only 0.7355% less runtime, 14.6668% more raw tokens and four fewer full passes. Lower effort does not demonstrate resource savings for both models in this sweep.",
+  "caveats": "Raw tokens are not API dollars; no monetary savings estimate is claimed. Effort labels are harness-specific. Comparisons are descriptive single-attempt task results, not significance tests or future-performance guarantees. Frozen scores and the approved 20% Code quality weight are unchanged."
+}

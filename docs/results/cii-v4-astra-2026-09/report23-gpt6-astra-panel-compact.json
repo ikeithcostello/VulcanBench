@@ -1,0 +1,53 @@
+{
+  "source": "/Users/morganlinton/dev/VulcanBench/runs-astra-cii-v4-claude-judging-v1/verification.json",
+  "profile": "swe-v4-reviewed-equal-panel-2026-09-05",
+  "chart": "dot and interval",
+  "axis_range": [
+    91,
+    93
+  ],
+  "interval": "one sample SE across tasks",
+  "rows": [
+    {
+      "effort": "Low",
+      "score": 91.60173913043478,
+      "se": 0.4441779255156437,
+      "passed": 22,
+      "minutes": 4.218694202898551,
+      "tokens": 20474694
+    },
+    {
+      "effort": "Medium",
+      "score": 91.72858695652174,
+      "se": 0.23469806448814232,
+      "passed": 23,
+      "minutes": 3.8226376811594203,
+      "tokens": 15736923
+    },
+    {
+      "effort": "High",
+      "score": 91.5855652173913,
+      "se": 0.17510434580926942,
+      "passed": 23,
+      "minutes": 4.899905797101449,
+      "tokens": 17652773
+    },
+    {
+      "effort": "Extra-high",
+      "score": 92.3903695652174,
+      "se": 0.1651478263939305,
+      "passed": 23,
+      "minutes": 8.090497101449277,
+      "tokens": 21331912
+    },
+    {
+      "effort": "Max",
+      "score": 92.25321739130435,
+      "se": 0.21350712243418352,
+      "passed": 23,
+      "minutes": 10.280539855072464,
+      "tokens": 21847403
+    }
+  ],
+  "score_spread": 0.8048043478260922
+}
