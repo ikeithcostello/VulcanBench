@@ -30,6 +30,7 @@ import json
 import re
 import subprocess
 import sys
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -100,6 +101,50 @@ def retry_external_kill(folder: Path) -> bool:
                               "action": "Transport fault: one fresh attempt per the protocol; receipt retained."}
     receipt.write_text(json.dumps(rec, indent=2, sort_keys=True))
     print(json.dumps({"event": "external_kill_retry", "call": str(folder.relative_to(OUT))}), flush=True)
+    return True
+
+
+QUOTA_MARKERS = ("resource_exhausted", "RetriableError", "rate limit", "rate_limit", "429")
+QUOTA_MAX_RESUMES = 12
+
+
+def quota_resume(folder: Path) -> bool:
+    """A transport-level quota or rate-limit error with no response is a quota stop, not a judgment.
+
+    Per protocol, quota stops preserve receipts and resume with identical
+    inputs: the failed attempt's files are archived inside the call folder
+    under quota-stops/, the wrapper waits with backoff, and the same call runs
+    again. After QUOTA_MAX_RESUMES archived stops the call is left for a person.
+    """
+    latest = None
+    for n in (2, 1):
+        if (folder / f"attempt-{n}.json").exists():
+            latest = n
+            break
+    if latest is None:
+        return False
+    rec = json.loads((folder / f"attempt-{latest}.json").read_text())
+    error = str(rec.get("error", ""))
+    if rec.get("status") != "failed" or not any(m in error for m in QUOTA_MARKERS):
+        return False
+    stream = folder / f"attempt-{latest}.stream.jsonl"
+    if stream.exists() and '"type":"result"' in stream.read_text():
+        return False
+    archive = folder / "quota-stops"
+    archive.mkdir(exist_ok=True)
+    prior = len(list(archive.glob("*-attempt-*.json")))
+    if prior >= QUOTA_MAX_RESUMES:
+        print(json.dumps({"event": "quota_stop_limit", "call": str(folder.relative_to(OUT)), "stops": prior}), flush=True)
+        return False
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    for path in folder.glob(f"attempt-{latest}.*"):
+        path.rename(archive / f"{stamp}-{path.name}")
+    (archive / f"{stamp}-note.json").write_text(json.dumps({
+        "finding": "transport quota or rate-limit error with no response", "error": error[:300],
+        "action": "attempt archived; same call resumed after backoff (protocol: quota stops preserve receipts and resume)"}, indent=2))
+    wait = min(180 * (2 ** prior), 1800)
+    print(json.dumps({"event": "quota_resume", "call": str(folder.relative_to(OUT)), "prior_stops": prior, "wait_s": wait}), flush=True)
+    time.sleep(wait)
     return True
 
 
@@ -429,6 +474,9 @@ def main() -> int:
             applied += 1
             continue
         if folder is not None and retry_external_kill(folder):
+            applied += 1
+            continue
+        if folder is not None and quota_resume(folder):
             applied += 1
             continue
         if True:

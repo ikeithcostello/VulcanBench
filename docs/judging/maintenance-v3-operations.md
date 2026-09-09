@@ -169,3 +169,10 @@ operational notes live here.
   with no terminal event is a transport fault and gets the protocol's one
   fresh attempt; a second kill on the same call stops for a person. The
   sweep was not modified.
+- Grok, probe 208 (September 9, 00:39 PDT): Cursor returned a transport
+  error, RetriableError resource_exhausted, with no response. Treated as a
+  quota stop under the protocol: the attempt's files are archived inside the
+  call folder under quota-stops/ with a note, the wrapper waits with backoff
+  (3 minutes doubling to 30), and the same call resumes with identical
+  inputs. Twelve archived stops on one call leave it for a person. Muse had
+  already completed its full pass.
