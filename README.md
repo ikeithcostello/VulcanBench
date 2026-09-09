@@ -4,20 +4,19 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/)
 
-Fully open-source benchmarking for LLMs on realistic, multi-file software
-engineering tasks. VulcanBench measures how models perform across reasoning
-effort, language, codebase scale, and task complexity, with full traces,
-reproducible scoring, and a local dashboard.
+VulcanBench is an open-source harness for measuring how well LLM coding agents
+do real software engineering work. It runs a model against a task, keeps the
+task's hidden tests away from the agent, grades the result deterministically,
+and records everything: the full trace, the final patch, tokens, wall-clock,
+cost, and a reproducible replay command. It measures a model either through a
+raw API or through the product it ships in (Claude Code, Codex, Cursor, Grok
+Build, ZCode, Muse Code), at every reasoning-effort level the provider exposes.
 
-**v0.8.0**: adds the **Voice Eval Suite v1** (`vulcanbench voice`): text-vs-audio delta measurement ("voice tax") across OpenAI Realtime, Gemini Live, and Qwen3-Omni, with a 200-question held-out set, a voices/rate/noise audio matrix, and modality-blind scoring. See [docs/VOICE_EVAL.md](docs/VOICE_EVAL.md). Previous: **v0.7.0**: adds a **Qwen / DashScope provider** (`qwen:qwen3.7-plus` and friends)
-so Alibaba Cloud models can be benchmarked like OpenAI / Anthropic / Z.ai / Kimi.
-Builds on v0.6's frontier-hard task tier and cost-efficient reporting
-(`--max-run-cost`, `compare`, `regrade`, `--only-missing`), and on v0.5's 52
-gold-verified tasks, tool-calling agent, Docker sandbox, pre-run cost estimates,
-five-metric scoring, and HTML replay.
-See [docs/QUICKSTART.md](docs/QUICKSTART.md) to get started.
+Published results, model cards and methodology live at
+[vulcanbench.com](https://vulcanbench.com). The public record behind each
+report is in [docs/results/](docs/results/).
 
-## One-command setup
+## Quick start
 
 ```bash
 git clone https://github.com/morganlinton/VulcanBench.git
@@ -27,492 +26,296 @@ source .venv/bin/activate
 vulcanbench --help
 ```
 
-Dashboard + backend (the dashboard reads live data from the API):
-```bash
-pip install -e ".[backend]"
-uvicorn backend.app:app --port 8000          # serves ./runs at /api/*
-cd dashboard && npm install && npm run dev    # http://localhost:3000
-```
-The dashboard falls back to a friendly empty state if the backend isn't running.
-Point it elsewhere with `NEXT_PUBLIC_API_BASE` (see `dashboard/.env.example`).
+Prerequisites: Python 3.12 or newer, Git with Git LFS, and Docker Desktop for
+real runs. Node 20 or newer only if you want the dashboard.
 
-By default the API reads `./runs/` directly. For a durable, queryable store, set
-`DATABASE_URL` (Postgres or SQLite) and the API switches to a database, 
-`POST /api/runs` and `/api/feedback` become writable, and
-`python scripts/ingest_runs.py` bulk-loads existing runs. A Postgres is provided
-by `docker compose up db`.
-
-## Example run
+Confirm the harness works end to end without spending anything. The mock model
+is deterministic and offline; `--sandbox local` is fine here because its
+commands are canned:
 
 ```bash
-# Offline, deterministic (no API key), drives the real agent loop end to end.
-# Real runs default to the Docker sandbox; --sandbox local is fine for the
-# deterministic mock model.
 vulcanbench run --task hello-world --model mock:synthetic --sandbox local
-
-# Any real model via the generic provider interface:
-export OPENAI_API_KEY=...      # or ANTHROPIC_API_KEY=...
-vulcanbench run --task hello-world --model openai:gpt-4o
-vulcanbench run --task hello-world --model anthropic:claude-opus-4-8
-vulcanbench run --task hello-world --model zai:glm-5.2
-vulcanbench run --task hello-world --model qwen:qwen3.7-plus
-vulcanbench run --task hello-world --model deepseek:deepseek-v4-flash
-
-# Or benchmark the product harness through an existing subscription:
-vulcanbench harness doctor codex
-vulcanbench run --task hello-world --harness codex --billing subscription \
-  --model gpt-5.6-sol --no-judges
-
-# Each run prints all five metrics + cost, e.g.:
-#   functional=1.0 quality=1.0 security=1.0 human_like=0.8 total=0.974 cost=$0.0
-# and writes ./runs/<id>/{trace.jsonl, summary.json, replay.html, final.patch}
-
-# Run a whole suite: repeat for signal, parallelize, and cap the spend.
-vulcanbench run --suite v1 --model openai:gpt-4o --repeat 5 --max-concurrency 4 --max-cost 20.00
-
-# Compare normalized reasoning effort on the same suite/model.
-vulcanbench run --suite v1 --model openai:gpt-4o --effort low
-vulcanbench effort-sweep --suite v1 --model openai:gpt-5.1 --efforts low,medium,high --repeat 3 --sandbox docker
-
-# Fast micro/small sweep vs navigation-heavy medium/large tasks:
-vulcanbench run --suite v1-micro --model openai:gpt-4o
-vulcanbench run --suite v1-large --model openai:gpt-4o --repeat 5 --sandbox docker
-
-# Diamond tier: rubric-graded *mergeability* (not just correctness). Use a judge
-# model different from the one under test to avoid self-grading:
-vulcanbench run --suite v1-diamond --model anthropic:claude-opus-4-8 --judge-model openai:gpt-5.5
-# Carbyne tier: harder still, terse prompts where the naive solution is subtly wrong:
-vulcanbench run --suite v1-carbyne --model anthropic:claude-opus-4-8 --judge-model openai:gpt-5.5
-vulcanbench leaderboard            # by model: pass@1 ± stderr, pass@k, cost, latency
-vulcanbench leaderboard --by run   # per-run drill-down
-vulcanbench report -o report.md    # shareable Markdown/JSON report (ranking,
-                                   #   model-separation/discrimination, effort
-                                   #   sensitivity, per-task breakdown,
-                                   #   environment, drift flags)
-vulcanbench calibrate              # empirical difficulty calibration from recorded runs
-vulcanbench replay <id>
-
-# Runs execute in an isolated container by default (see Sandbox below);
-# build the image once with `make sandbox-image`.
-
-# Use it as a CI regression gate (threshold must be in [0, 1]):
-vulcanbench run --suite v1 --model openai:gpt-4o --repeat 5 --fail-under 0.8
 ```
 
-The gate **fails closed**: it exits `4` if pass@1 is below the threshold, if
-pass@1 is unavailable, *or if any suite run errored*, a CI gate never goes
-green on a partial or unknown result.
-
-Exit codes: `0` ok · `1` usage/error · `2` provider · `3` sandbox · `4` gate
-failed (below `--fail-under`, or a run errored).
-
-`final.patch` is a real `git diff` of the agent's edits; `replay.html` is fully
-self-contained (open in any browser). Use `--no-judges` to skip the LLM judge
-ensemble, `--timeout SECONDS` to cap a run's wall-clock. Traces, summaries, and
-patches are secret-redacted and size-capped before they're written, so run
-artifacts are safe to publish. See `make ci`, `make docker-up`, docs/.
-
-## Cost-efficient reporting
-
-Grading is deterministic and every run records the `task_hash` it was scored
-against, so comparisons are queries over `./runs`, not re-runs. Four commands
-turn a "$70 full-matrix re-run" into a "~$10 one new column":
+Then build the sandbox image once and run a real model. Real runs execute
+model-written shell commands, so they default to a network-off Docker sandbox:
 
 ```bash
-# Per-run hard cost ceiling: stop a single agent run once its own spend crosses
-# the value (records cost_capped; the partial result is still graded). Turns a
-# failing run that would ruminate to the step cap into a bounded "DNF at cap".
-vulcanbench run --suite v2 --model anthropic:claude-fable-5 --max-run-cost 2.50
-
-# Resume / fill only the gaps: reuse fresh cached runs for this model+effort and
-# launch only the missing tasks (stale runs, scored against an older task
-# definition, are ignored and re-run). Pairs with --max-run-cost.
-vulcanbench run --suite v2 --model anthropic:claude-opus-4-8 --effort high \
-  --only-missing --max-run-cost 2.50
-
-# Assemble the model × effort matrix for a frozen suite from cached runs only, 
-# baselines are never re-run. Add a model = run that one model, then re-compare.
-vulcanbench compare --suite v2                 # complete cells (prints a frozen version id)
-vulcanbench compare --suite v2 --incomplete    # show gaps + the command to fill them
-
-# Re-score existing runs against the current task definition at $0 API cost
-# (rebuilds base + captured agent patch + current hidden tests, re-verifies).
-# Use after editing a task's tests/thresholds instead of re-running the model.
-vulcanbench regrade runs/<run-id> --sandbox docker
-vulcanbench regrade runs/ --sandbox docker     # every run under a directory
+make sandbox-image                       # vulcanbench/sandbox:base (Python, Go, Node)
+export ANTHROPIC_API_KEY=...             # or OPENAI_API_KEY, XAI_API_KEY, ...
+vulcanbench run --task hello-world --model anthropic:claude-opus-5
 ```
 
-Cache reuse (`--only-missing`) and comparison (`compare`) only see runs under the
-directory they scan (`--output-dir` / `--runs-dir`, default `./runs`, recursive),
-so keep every run under one root. See `docs/QUICKSTART.md` for the full workflow.
+Each run prints its scores and cost and writes
+`./runs/<id>/{trace.jsonl, summary.json, replay.html, final.patch}`.
+`final.patch` is a real `git diff` of the agent's edits and `replay.html` is a
+self-contained replay you can open in any browser. Traces, summaries and patches
+are secret-redacted and size-capped before they are written, so run artifacts
+are safe to publish. See [docs/QUICKSTART.md](docs/QUICKSTART.md) for the
+longer walkthrough.
 
-## Models
+## How a run is scored
 
-Specify a model as `provider:model`:
+Every run gets five metrics plus a weighted total. A metric is `null` with a
+reason when its analyzer is unavailable; a score is never fabricated.
 
-- `mock:synthetic`: deterministic, offline; used by tests and demos.
-- `openai:<model>`: OpenAI Chat Completions for normal runs, or the Responses
-  API when `--effort` is supplied. Needs `OPENAI_API_KEY`.
-- `anthropic:<model>`: Anthropic Messages API. Needs `ANTHROPIC_API_KEY`.
-- `zai:<model>`: Z.ai (Zhipu) OpenAI-compatible Chat Completions API. Needs
-  `ZAI_API_KEY`. Reasoning effort is not supported; `--effort` is recorded as
-  metadata only.
-- `kimi:<model>`: Moonshot AI (Kimi) OpenAI-compatible Chat Completions API.
-  Needs `MOONSHOT_API_KEY`. `extra-high` maps to Kimi's `reasoning_effort=max`;
-  other effort levels are recorded as metadata only.
-- `qwen:<model>`: Alibaba Cloud DashScope (Qwen) OpenAI-compatible Chat
-  Completions API. Needs `DASHSCOPE_API_KEY`. Default base URL is the
-  international endpoint; set `DASHSCOPE_BASE_URL` for China or another region.
-  `low`/`medium` map to Qwen's `reasoning_effort` and `extra-high` maps to its
-  `xhigh` (Qwen3.8+; the documented enum is low/medium/xhigh, default xhigh).
-  `high` is recorded as metadata only, Qwen has no such level, and an unset
-  request runs at the xhigh default. Pre-3.8 models may ignore the field.
-- `deepseek:<model>`: DeepSeek OpenAI-compatible Chat Completions API. Needs
-  `DEEPSEEK_API_KEY`. `low`/`high` map to DeepSeek's `reasoning_effort` field
-  and `extra-high` maps to its `max`; `medium` is recorded as metadata only
-  (DeepSeek's enum is low/high/max, it silently coerces `medium` to `high`,
-  so the harness never sends it).
-- `meta:<model>`: Meta Model API Responses endpoint for Muse Spark. Needs
-  `META_MUSE_SPARK_API` (or Meta's official `MODEL_API_KEY`); set
-  `META_BASE_URL` to override the default
-  `https://api.meta.ai/v1`. `minimal`/`low`/`medium`/`high` map directly and
-  `extra-high` maps to `xhigh`: the full documented enum. When `--effort` is
-  unset the model reasons at "a model-determined level" (Meta does not document
-  which), so an unset run is not a known effort point; sweeps should pass an
-  explicit level. The direct API request runs host-side while
-  model-authored tools and hidden verification remain in Docker, avoiding the
-  Muse Code CLI's container sign-in path. Built-in pricing covers both
-  `muse-spark-1.2` and the data-sharing `muse-spark-1.2-contributor` tier.
-  Can also be [routed through OpenRouter](#routing-muse-spark-through-openrouter)
-  when Meta API access is unavailable.
-- `xai:<model>`: xAI (Grok) OpenAI-compatible Chat Completions API. Needs
-  `XAI_API_KEY`; set `XAI_BASE_URL` to override `https://api.x.ai/v1`.
-  `low`/`medium`/`high` map to Grok's `reasoning_effort` and `extra-high` maps
-  to its `xhigh` (Grok 4.6+ only, pre-4.6 models silently coerce `xhigh` to
-  `high`, so don't sweep extra-high below 4.6). xAI's DEFAULT is `high` and
-  reasoning cannot be disabled, so an unset `--effort` runs at high, sweeps
-  should always pass an explicit level. Built-in pricing covers grok-4.6/4.5/4.3
-  at the <200K-input tier (xAI doubles rates at ≥200K input, which receipts
-  don't expose, long-context runs are underestimated).
-- `ollama:<model>`: local inference through Ollama's OpenAI-compatible API
-  (e.g. `ollama:muse-glimmer:30b`). No API key; recorded cost is $0 (marginal
-  cash, hardware and electricity are not modeled). `OLLAMA_BASE_URL` overrides
-  the default `http://localhost:11434/v1` and accepts any OpenAI-compatible
-  local server (LM Studio, llama.cpp, vLLM). Reasoning effort is recorded as
-  metadata only. Local runs measure the model *and your hardware*: use
-  `--max-concurrency 1`, and keep duration-based metrics out of cross-column
-  comparisons with hosted APIs.
-- `claude-code:<model>` / `--harness claude-code`: Claude Code through a
-  Claude subscription. Results measure the model plus Claude Code harness.
-- `codex:<model>` / `--harness codex`: Codex CLI through a ChatGPT
-  subscription, with JSONL traces and Codex's workspace-write sandbox.
-- `cursor:<model>` / `--harness cursor`: Cursor's `cursor-agent` CLI billed to
-  a Cursor account (plan or credits). Results measure the model plus Cursor's
-  agent harness. The CLI streams no token usage, so token counts are zero and
-  API-equivalent cost is recorded as unavailable; check spend in Cursor's
-  dashboard. Effort travels via Cursor's `model[effort=low|medium|high]`
-  bracket syntax, except model families that bake effort into the id
-  (`cursor-grok-4.6-low` … `-xhigh`), sweep those by model id. Use
-  `--sandbox docker` so hidden-test verification runs in the sandbox image;
-  the Cursor agent itself works the host workspace under Cursor's own sandbox.
+| Metric | Source |
+|---|---|
+| `functional` | Hidden `fail_to_pass` and `pass_to_pass` tests run after the agent finishes. 1.0 when every required test passes, otherwise proportional to the pass rate. Any regression guard failure zeroes it on the frontier suite. |
+| `quality` | Static analysis of the changed files: ruff and radon for Python, `cargo fmt` and `clippy` for Rust, toolchain-dependent elsewhere. |
+| `security` | bandit for Python, `cargo audit` plus an unsafe-delta penalty for Rust, gosec for Go, npm audit for JS and TS. |
+| `human_like` | Model-based code review. Off with `--no-judges`; choose the judge with `--judge-model` so a model never grades its own work. |
+| `efficiency` | Derived from tokens and steps, lower is better. |
 
-Subscription runs record marginal cash, plan allocation, quota, and
-API-equivalent value separately; they are not mixed silently with raw API runs.
-See [Subscription harness benchmarking](docs/HARNESS_BENCHMARKING.md).
+The harness total re-normalizes over whichever metrics are present
+([harness/evaluator/scorer.py](harness/evaluator/scorer.py)). Published
+VulcanBench-SWE v4 reports use a fixed combined score instead:
 
-`--effort` accepts `minimal`, `low`, `medium`, `high`, `extra-high`, or `max`.
-`minimal` is sent only to providers that document it (OpenAI, Meta) and is
-recorded as metadata elsewhere; it is opt-in for sweeps. OpenAI runs map it
-to the Responses API `reasoning.effort` field; Anthropic runs map it to the
-Messages API `output_config.effort` field. `extra-high` maps to `xhigh` on both
-providers and is opt-in for sweeps because support is model-dependent (e.g.
-Claude Opus 4.7+). `max` is a distinct OpenAI API level and is also opt-in.
-Codex and Claude Code subscription harnesses pass supported effort labels to
-their native CLIs; other providers record unsupported labels without sending them.
-Mock, Z.ai, and Qwen runs accept the field as no-op metadata.
-Effort labels are each provider's own scale, a cross-provider comparison at the
-same label compares each model at its own setting, not a calibrated equivalence.
-
-### Routing Muse Spark through OpenRouter
-
-Point `META_BASE_URL` at OpenRouter to reach Muse Spark without Meta API access:
-
-```bash
-export META_BASE_URL=https://openrouter.ai/api/v1
-export OPENROUTER_API_KEY=sk-or-...
-vulcanbench run --task hello-world --model meta:muse-spark-1.2 --sandbox docker
+```
+combined = 100 * (0.50 functional + 0.085 quality + 0.085 security + 0.33 code_quality)
 ```
 
-The harness namespaces the id on the wire (`meta/muse-spark-1.2`) while the spec
-stays `meta:muse-spark-1.2`, so pricing keys and `compare` output line up with
-Meta-direct runs. Requests are pinned with
-`provider: {order: ["meta"], allow_fallbacks: false}`, and the manifest records a
-`route` block naming the base URL, wire id, and pinned upstream.
+Code quality is a third of the combined score and is measured by the
+[Code quality protocol](#code-quality-judging) below, not by the run-time
+judge. Time and cost are reported beside the score, never folded into it.
+Details: [docs/METRICS.md](docs/METRICS.md).
 
-This route is comparable to a direct run but not identical, treat it as its own
-reported column, and footnote it:
+Cost is recorded per run from a built-in pricing table (`VULCANBENCH_PRICING`
+overrides it). Subscription runs record marginal cash, plan allocation, quota
+and API-equivalent value separately and are never silently mixed with raw API
+runs.
 
-- **Pass-through, not a re-host.** OpenRouter's only endpoint for this model is
-  Meta's own, so there is no third-party quantization or serving-stack variance.
-  Pinning is what keeps that true if a second endpoint ever appears; an
-  unavailable pin fails the run rather than silently substituting one.
-- **Implicit caching works, and is priced correctly.** OpenRouter's model page
-  says the endpoint has no implicit caching; measured behaviour disagrees. On a
-  `hello-world` run the endpoint reported `cached_tokens` of 1009/1019 on the
-  first turn (the cache survives across runs) and non-zero on 4 of 5 turns, and
-  billed cache reads at exactly $0.15/M, the 0.12x factor the harness folds in.
-  Summed OpenRouter billing for that run was $0.00553895 against a recorded
-  `cost_usd` of $0.005539. A fresh prefix does miss on its first call or two
-  (cache writes take time to propagate), so a one-shot A/B will understate it.
-- **Same list price, no Contributor tier.** Token prices match Meta direct
-  ($1.25/M in, $4.25/M out). The data-sharing `-contributor` tier is Meta-direct
-  only; requesting it on this route fails fast rather than billing at a rate
-  OpenRouter does not sell.
+## Models and harnesses
 
-## Sandbox
+A model is `provider:model`. Effort is `--effort minimal|low|medium|high|extra-high|max`;
+each provider maps the labels it supports to its own field and records the
+rest as metadata without sending them. Effort labels are each provider's own
+scale, so a cross-provider comparison at the same label compares each model at
+its own setting, not a calibrated equivalent.
 
-The agent's tool execution can run in an isolated Docker container instead of on
-the host:
+### Raw APIs
+
+| Provider | Spec | Key | Effort |
+|---|---|---|---|
+| OpenAI | `openai:<model>` | `OPENAI_API_KEY` | Responses API `reasoning.effort` when `--effort` is set; `minimal` and `max` supported |
+| Anthropic | `anthropic:<model>` | `ANTHROPIC_API_KEY` | Messages API `output_config.effort`; `extra-high` maps to `xhigh` |
+| xAI | `xai:<model>` | `XAI_API_KEY` | `reasoning_effort`; default is `high` and reasoning cannot be disabled, so sweeps should pass an explicit level |
+| Meta | `meta:<model>` | `META_MUSE_SPARK_API` | `minimal` to `xhigh` map directly; an unset effort runs at a model-chosen level |
+| DeepSeek | `deepseek:<model>` | `DEEPSEEK_API_KEY` | `low`, `high`, `max`; `medium` is recorded only |
+| Alibaba Qwen | `qwen:<model>` | `DASHSCOPE_API_KEY` | `low`, `medium`, `xhigh`; `high` is recorded only |
+| Moonshot Kimi | `kimi:<model>` | `MOONSHOT_API_KEY` | `extra-high` maps to `max`; others recorded only |
+| Z.ai | `zai:<model>` | `ZAI_API_KEY` | recorded only |
+| OpenRouter | `openrouter:<vendor>/<model>` | `OPENROUTER_API_KEY` | pinned to one upstream endpoint so a column stays one serving stack |
+| Ollama | `ollama:<model>` | none | local inference through any OpenAI-compatible server; cost records as $0 and duration measures your hardware |
+| Mock | `mock:synthetic` | none | deterministic, offline |
+
+### Subscription harnesses
+
+A harness run drives the product's own coding-agent CLI on a subscription while
+VulcanBench keeps task preparation, the final diff, hidden verification and
+scoring. The result measures the model plus its product harness. Every harness
+records structured events, and every harness except Cursor streams token usage.
 
 ```bash
-# Build the base image once (git, ripgrep, ruff, bandit, radon, pytest):
-docker build -t vulcanbench/sandbox:base -f sandbox/Dockerfile.base .
-
-vulcanbench run --task hello-world --model openai:gpt-4o
-# --sandbox local|docker|auto   (default: docker)
-# --image vulcanbench/sandbox:base   (default: per-task metadata or vulcanbench/sandbox:base)
-# --network                     (off by default; opt in for dependency installs)
+vulcanbench harness list                 # adapters and their execution boundaries
+vulcanbench harness doctor codex         # installation and sign-in check, no model call
+vulcanbench run --suite cii-v4 --harness codex --billing subscription \
+  --model gpt-6-astra --effort high --sandbox docker --no-judges
 ```
 
-- `docker` (default) runs tools in a non-root, **network-off**, resource-limited
-  container (workspace bind-mounted, cleaned up after each run). It errors out
-  if the daemon is unreachable, it never silently falls back to host execution.
-- `local` runs the model's commands directly on the host, fast and Docker-free,
-  but unsandboxed; opt in deliberately (fine for `mock:synthetic` and trusted
-  dev loops).
-- `auto` uses Docker when available. Falling back to host execution additionally
-  requires `VULCANBENCH_ALLOW_HOST_EXEC=1`; otherwise it errors out.
+| Harness | `--harness` | Signs in with | Notes |
+|---|---|---|---|
+| Claude Code | `claude-code` | Claude subscription | native permission auto mode on the host workspace |
+| Codex CLI | `codex` | ChatGPT sign-in | `workspace-write` sandbox; can run inside a container with `--agent-container` |
+| Cursor CLI | `cursor` | `cursor-agent login` | no token stream, so API-equivalent cost is recorded as unavailable |
+| Grok Build | `grok-build` | `grok login` | custom kernel profile: workspace writes allowed, repository reads denied |
+| ZCode | `zcode` | `zcode login` (GLM Coding Plan) | permission mode `yolo`, web tools removed |
+| Muse Code | `muse-code` | Muse account | macOS outer sandbox, isolated session data, repository read denied |
 
-File operations (read/edit/search) always run host-side over the shared mount;
-command execution (`run_command`/`run_tests`/`run_lint`) **and the functional
-verifier** run inside the container, so the whole run is reproduced in one
-isolated environment. Build the all-language image with `docker build -t
-vulcanbench/sandbox:base -f sandbox/Dockerfile.base .` (Python + Go + Node).
-
-## Tasks
-
-The `tasks/v1/` suite holds **52** gold-verified tasks across Python,
-Go, TypeScript, and Rust, plus the `hello-world` demo. Each task ships a starting
-`repo/`, **hidden** `tests/` (never shown to the agent), declarative
-`fail_to_pass`/`pass_to_pass` test commands in `metadata.json`, and a
-`gold_patch.diff` reference solution.
-
-The corpus spans three difficulty tiers (`easy` / `medium` / `hard`) across all
-four languages. Most tasks today are `localized` single-file fixes that set a
-floor; a growing set raise the ceiling with genuine subtlety, operator
-precedence and associativity (`py-expr-eval`, hard), a race-free,
-order-preserving parallel map verified under `go test -race`
-(`go-parallel-map`, hard), an RFC 6901 JSON Pointer resolver
-(`py-jsonpointer`, hard), and a prototype-pollution-safe deep merge
-(`ts-deep-merge`, hard). Broader `task_complexity` (`multi_file` / `system` /
-`architecture`) and larger `repo_scale` coverage is active work, see
-[ROADMAP](docs/ROADMAP.md). Because the `task_complexity` and `repo_scale`
-fields are validated against the repo, a task's declared scale is checked, not
-just asserted. `vulcanbench report` includes a discrimination section so you can
-see which tasks actually separate the models you run (and which carry no signal).
+Muse Code runs only from a content-pinned binary so an auto-updating launcher
+can never change the system under test mid-sweep:
 
 ```bash
-make validate-tasks                              # validate every task
+export VULCANBENCH_MUSE_BINARY=/absolute/path/to/muse
+export VULCANBENCH_MUSE_SHA256=<sha256 of that file>
+vulcanbench harness doctor muse-code
+vulcanbench run --suite cii-v4 --harness muse-code --model muse-spark-1.3 \
+  --effort high --timeout 5400 --sandbox docker --no-judges
+```
+
+Muse requires an explicit model and effort and a positive wall-clock timeout,
+and records the stream idle timeout it ran under. Per-harness behaviour,
+verified CLI versions and boundaries: [docs/HARNESS_BENCHMARKING.md](docs/HARNESS_BENCHMARKING.md).
+
+## Suites
+
+| Suite | `--suite` | What it holds |
+|---|---|---|
+| VulcanBench-SWE v4 | `cii-v4` ([tasks/coding-intelligence-index-v4](tasks/coding-intelligence-index-v4/)) | 23 behavioural-reconstruction tasks. Each ships a retired compiled binary whose real behaviour departs from its written spec in documented ways, a naive rewrite made from the spec, and hidden tests captured from the binary. The agent must characterise the black box and make the rewrite match it. Every task passes a frontier admission gate ([CHARTER.md](tasks/coding-intelligence-index-v4/CHARTER.md)) and its verdict is logged in [CANDIDATES.md](tasks/coding-intelligence-index-v4/CANDIDATES.md). |
+| Coding Intelligence Index v1 | `cii-v1` ([tasks/cii-v1](tasks/cii-v1/)) | 41 tasks mined from open-source pull requests merged after the measured models' training cutoffs, with complexity-scaled budgets, hidden fail-to-pass tests and regression guards. |
+| v1 | `v1`, `v1-micro`, `v1-large`, `v1-diamond`, `v1-carbyne` ([tasks/v1](tasks/v1/)) | 52 gold-verified tasks across Python, Go, TypeScript and Rust in three difficulty tiers, plus the `hello-world` demo. Diamond and Carbyne tiers use rubric-graded mergeability with terse prompts. |
+| v2, v3 | `v2`, `v3` | Earlier coding suites, kept so their archived reports stay reproducible. Results are only comparable within one suite. |
+| VulcanCyber v1 | `vulcancyber-v1` ([tasks/vulcancyber-v1](tasks/vulcancyber-v1/)) | 16 defensive security tasks: real merged fixes for vulnerabilities, graded by the project's own regression tests. Defensive posture only. [docs/CYBER_EVAL.md](docs/CYBER_EVAL.md) |
+| Voice v1 | `vulcanbench voice` ([tasks/voice-v1](tasks/voice-v1/)) | 200 held-out questions rendered through TTS under a voices, rate and noise matrix to measure the score a model loses when the same question arrives as speech. [docs/VOICE_EVAL.md](docs/VOICE_EVAL.md) |
+
+Every task ships a starting `repo/`, hidden `tests/` never shown to the agent,
+declarative `fail_to_pass` and `pass_to_pass` commands in `metadata.json`, a
+`gold_patch.diff` reference solution, and labelled provenance (`source`,
+`decontaminated`). Validation proves each task is real: the gold patch must
+score 1.0, the fail-to-pass tests must fail before the fix, and grading must be
+deterministic over repeated runs.
+
+```bash
+make validate-tasks                              # every task
 vulcanbench validate-task tasks/v1/<id>          # one task
 ```
 
-### Grading: hidden tests or an agentic grader
+A task's functional score normally comes from hidden tests. A task can opt into
+an agentic grader (`metadata.grader: "agentic"`) that judges the diff against
+plain-English acceptance criteria the agent never sees, so the prompt can be as
+terse as a real ticket; `scripts/grader_eval.py` reports a grader's accuracy,
+false-pass rate and self-consistency on labelled cases before you rely on it.
+Task format and contribution rules: [docs/TASK_CONTRIBUTION.md](docs/TASK_CONTRIBUTION.md).
 
-By default a task's `functional` score comes from **hidden tests**: deterministic
-and exact, but it requires the issue to fully specify the expected behavior.
+## Code quality judging
 
-A task can instead opt into an **agentic grader** (`metadata.grader: "agentic"`)
-that judges the agent's diff against a list of plain-English `acceptance_criteria`
-(never shown to the agent), so the prompt can be **terse and realistic**: closer
-to how developers actually ask. The grader, not the prompt, holds the spec.
+The run-time `human_like` judge is a quick signal. Published SWE v4 scores use
+a separate, frozen protocol, [docs/judging/code-quality-maintenance-v3.md](docs/judging/code-quality-maintenance-v3.md),
+because automated metrics reward compression and a model reads dense code for
+free.
 
-```bash
-# Use a strong, independent grader model to avoid a model grading its own work:
-vulcanbench run --task py-slugify-terse --model openai:gpt-5.5 \
-  --judge-model anthropic:claude-opus-4-8
-```
-
-Agentic grading is non-deterministic, so it is opt-in and never the default;
-tasks that need exact, reproducible scoring keep the test verifier. See
-`tasks/v1/py-slugify-terse` for an example.
-
-**Trust the grader before you rely on it.** An LLM grader is only worth using if
-it agrees with ground truth and doesn't flip its verdict run to run. Two tools:
-
-- Set `metadata.grader_samples: N` to grade by **majority vote** over N calls
-  (ties resolve to incorrect); each grade reports its `self_consistency`.
-- `python scripts/grader_eval.py --task tasks/v1/<id> --model <grader> --samples 5`
-  grades a task's labeled `grader_cases.json` (known-correct and known-incorrect
-  changes) and reports **accuracy**, **false-pass rate** (graded correct but
-  actually wrong, the dangerous one), and **self-consistency**. Don't ship an
-  agentic task whose grader posts a non-zero false-pass rate.
-
-Validation proves each task is real: the gold patch must solve it
-(`functional == 1.0`), the `fail_to_pass` tests must genuinely fail *before* the
-fix, and scoring must be deterministic over repeated runs.
-
-**Provenance is labeled and checked.** Every task declares `source`
-(`hand-authored` or `oss`) and an explicit `decontaminated` boolean. Hand-authored
-tasks are written now (post-cutoff, so `decontaminated: true`); the validator
-enforces that. An `oss` task (e.g. `oss-inflection-titleize`, sourced verbatim
-from a real MIT-licensed repo with its LICENSE preserved) is honestly labeled
-`decontaminated: false`: its fix predates model cutoffs, and the
-`vulcanbench report` integrity section flags every run scored against it. Scaffold
-one with `python scripts/import_oss_issues.py`. Format details:
-[docs/TASK_CONTRIBUTION.md](docs/TASK_CONTRIBUTION.md).
-
-## Coding Intelligence Index (CII)
-
-`tasks/cii-v1/` is the flagship measurement suite: **41 all-new tasks** sourced
-from upstream OSS PRs merged **May to August 2026** (post-cutoff for the models
-measured), with TerminalBench-style complexity-scaled budgets (30 min to 8 h,
-stamped and validator-enforced), hidden fail-to-pass tests plus regression
-guards that zero the functional score on any regression, and a deterministic
-×3 admission gate.
-
-**August 2026 frontier results** ([full report](docs/results/cii-v1-2026-08/README.md)),
-three models over the same symmetric 37-task set:
-Claude Opus 5 (Claude Code CLI) **96.4% ± 2.8**, Claude Sonnet 5 (Claude Code
-CLI) **89.2% ± 4.6**, GPT 5.6 Sol (Codex CLI) **86.5% ± 4.7** pass@1. The
-Opus-over-Sol gap is resolved under paired per-task tests; Sonnet vs Sol is a
-statistical tie (which agrees with SWE-bench Pro, the format-matched external
-benchmark). Exactly one task resists all three models. CII v1 ranks frontier
-models; it does not ceiling them.
-
-`tasks/coding-intelligence-index-v4/` is the difficulty-gated frontier successor: its
-[charter](tasks/coding-intelligence-index-v4/CHARTER.md) requires each candidate to be measured n=3
-against two reference frontier models before admission
-(`scripts/frontier_gate.sh`), and its [candidate log](tasks/coding-intelligence-index-v4/CANDIDATES.md)
-records every verdict. It is currently empty for an honest reason: across ten
-difficulty hypotheses and five formally gated candidates, Opus 5 solved every
-gated run, the mined-PR format discriminates between frontier models but
-does not beat the stronger one.
+- **One rubric for every task, frozen by hash.** Six dimensions scored 0 to 4 in
+  half steps for a named human reader: naming, presentation and intent (human
+  readability), structure, changeability and verifiability (maintainability).
+  Every score must cite an exact excerpt; the host computes the sub-scores.
+- **Ground truth where it exists.** An intent-recovery probe asks the judge,
+  given only the spec and the code, to list where the code departs from the
+  spec; a separate call matches the list against a frozen answer key.
+- **Neutral judges.** The scored panel comes from labs with no model on the
+  board being compared, so no judge grades a relative. Each judge passes a
+  calibration exam on ten held-out programs (clear, compressed, over-abstracted,
+  misleadingly commented, and so on), five reviews each against twenty
+  pre-declared gates, before it scores a single submission. A judge that fails
+  is published as failed.
+- **Every intervention on the record.** Protocol versions are frozen by hash
+  and older versions run from a checkout at their freeze commit. The operator
+  wrapper applies a small set of documented recovery rules and halts for a
+  person on anything else; each application is logged with the receipt it
+  touched.
 
 ```bash
-vulcanbench run --suite cii-v1 --model codex:gpt-5.6-sol --sandbox local --no-judges
-zsh scripts/frontier_gate.sh <task-id> tasks/coding-intelligence-index-v4   # v2 admission gate
+python harness/maintenance_review_v3_resume.py --out runs-code-quality-maintenance-v3.4 --calibrate
+python harness/maintenance_review_v3_resume.py --out runs-code-quality-maintenance-v3.4 --full
 ```
 
-## Voice Eval Suite
+The plain-language description is [docs/judging/maintenance-v3-system-summary.md](docs/judging/maintenance-v3-system-summary.md);
+the operations log is [docs/judging/maintenance-v3-operations.md](docs/judging/maintenance-v3-operations.md).
 
-Measures the **voice tax**: how many points a model loses when the same
-question arrives as speech instead of text. 200 held-out questions
-(`tasks/voice-v1/`), rendered via TTS under a voices × rate × noise matrix,
-answered through each model's realtime/audio endpoint, and scored by a
-modality-blind scorer (results have no numbers to show yet, none are
-published until the first full run).
+## Running a study without re-running everything
+
+Grading is deterministic and every run records the task hash it was scored
+against, so comparisons are queries over `./runs`, not re-runs.
 
 ```bash
-export OPENAI_API_KEY=...     # TTS + Realtime + STT fallback
-export GEMINI_API_KEY=...     # Gemini Live
-export DASHSCOPE_API_KEY=...  # Qwen3-Omni
-export XAI_API_KEY=...        # Grok Voice (grok-voice-think-fast-2.0)
-
-vulcanbench voice run -m openai-realtime --dry-run     # 5-question pipeline check
-vulcanbench voice run -m openai-realtime,gemini-live,qwen-omni,grok-voice
-vulcanbench voice report runs/voice-<id> -o report.md
+vulcanbench estimate --suite cii-v4 --model anthropic:claude-opus-5      # spend before you run
+vulcanbench run --suite cii-v4 --model anthropic:claude-opus-5 --repeat 3 --max-concurrency 4 --max-cost 50
+vulcanbench run --suite cii-v4 --model anthropic:claude-opus-5 --effort high --only-missing --max-run-cost 2.50
+vulcanbench effort-sweep --suite cii-v4 --model xai:grok-4.6 --efforts low,medium,high,extra-high
+vulcanbench compare --suite cii-v4              # model x effort matrix from cached runs only
+vulcanbench regrade runs/ --sandbox docker      # re-score against the current task definition at $0
+vulcanbench leaderboard                         # pass@1 with standard error, pass@k, cost, latency
+vulcanbench report -o report.md                 # shareable Markdown or JSON report
+vulcanbench audit-runs runs/                    # web and filesystem leakage audit of CLI-harness runs
+vulcanbench replay <id>
 ```
 
-Full methodology: [docs/VOICE_EVAL.md](docs/VOICE_EVAL.md).
+`--max-run-cost` stops a single run once its own spend crosses the cap and still
+grades the partial result. `--only-missing` reuses fresh cached runs and
+launches only the gaps. `--fail-under 0.8` turns a suite run into a CI gate
+that fails closed: exit code 4 if pass@1 is below the threshold, unavailable,
+or any run errored. Exit codes: `0` ok, `1` usage or error, `2` provider, `3`
+sandbox, `4` gate failed.
 
-## VulcanCyber Eval Suite
-
-A **defensive cybersecurity** suite (`tasks/vulcancyber-v1/`): each task is a real
-merged open-source PR that fixes a security weakness, sourced **post model cutoff**
-(`upstream_merged >= 2026-06-01`) and graded by the project's own deterministic
-security regression tests, "here is vulnerable code, produce the fix." v1 ships
-**16 validated tasks** across Python/TS/Go/JS/Rust and a dozen vulnerability
-classes (Family A vuln-fixes plus one Family-B security-tool fix): prototype
-pollution, CRLF/host injection, encoded-separator auth bypass, filename & ref-name
-spoofing, unpaired-surrogate crash, several algorithmic/resource DoS classes
-(YAML merge-key, urlencoded field-count, int-URL, integer-overflow), unescaped
-control-character serialization, and a gosec scanner detection-gap (Family B),
-spanning hono, zod, undici, validator.js, content-disposition, echo, gosec,
-pyyaml, tornado, werkzeug, urllib3, quick-xml, toml, and gitoxide.
+## Sandbox
 
 ```bash
-make sandbox-image-all       # base + Rust + Go 1.26 images the suite needs
-make validate-cyber          # gold-solves, fail-to-pass real, deterministic x3
-vulcanbench run --suite vulcancyber-v1 --model mock:synthetic --sandbox local   # $0 smoke
-vulcanbench run --suite vulcancyber-v1 --model anthropic:claude-opus-5 --sandbox docker
+vulcanbench run --task <id> --model <spec> --sandbox docker|local|auto --image <tag> [--network]
 ```
 
-Posture is defensive only (no offensive tooling). Candidate PRs are surfaced by
-`scripts/mine_security_prs.py` (a read-only `gh` search). Full methodology,
-task list, and sourcing recipe: [docs/CYBER_EVAL.md](docs/CYBER_EVAL.md);
-curation discipline: [tasks/vulcancyber-v1/CHARTER.md](tasks/vulcancyber-v1/CHARTER.md).
+`docker` (the default) runs the agent's commands and the functional verifier in
+a non-root, network-off, resource-limited container and errors out if the daemon
+is unreachable rather than falling back to the host. `local` runs commands on
+the host and is meant for the mock model and trusted development loops. `auto`
+uses Docker when available and refuses host execution unless
+`VULCANBENCH_ALLOW_HOST_EXEC=1` is set. Resource floors and ceilings
+(`--mem-floor`, `--cpu-ceiling`, `--pids-limit`) are recorded with the run.
+`--agent-container` runs a subscription CLI itself inside a container built
+from the sandbox image (`make agent-image-codex`) so the resource band bounds
+the agent phase too. `make sandbox-image-all` builds the Rust and Go images the
+security suite needs.
 
-## Architecture & Reproducibility
+## Dashboard and API
 
-- Standardized tools (list/read/edit/search/run) behind one protocol, with
-  interchangeable local and Docker executors (see [Sandbox](#sandbox))
-- Every step captured as JSONL (llm, tool, diff, test, metric) + token usage
-- Each run records its `vulcanbench replay <id>` command for reproduction
-- Docker sandbox runs untrusted command execution in a non-root, network-off,
-  resource-limited container
+Optional. The backend serves `./runs` as an API and the dashboard reads it:
 
-Full details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md),
-[docs/METRICS.md](docs/METRICS.md), [docs/REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md)
+```bash
+pip install -e ".[backend]"
+uvicorn backend.app:app --port 8000
+cd dashboard && npm install && npm run dev      # http://localhost:3000
+```
 
-## Documentation
+Set `DATABASE_URL` (Postgres or SQLite) for a durable store; `docker compose up
+db` provides Postgres and `python scripts/ingest_runs.py` loads existing runs.
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-| Doc | Purpose |
-|-----|---------|
-| [QUICKSTART](docs/QUICKSTART.md) | Setup, smoke test, first real run |
-| [METRICS](docs/METRICS.md) | How the five scores are computed |
-| [DEPLOYMENT](docs/DEPLOYMENT.md) | Hosted API + dashboard (optional) |
-| [CONTRIBUTING](docs/CONTRIBUTING.md) | Add tasks, run CI locally |
-| [CYBER_EVAL](docs/CYBER_EVAL.md) | VulcanCyber v1, defensive cybersecurity suite |
-| [ROADMAP](docs/ROADMAP.md) | Planned follow-ups |
-| [results/](docs/results/) | Published benchmark snapshots (MD, JSON, PDF) |
+## Repository map
 
-Quality and security analyzers run when the relevant toolchains are on your
-host (e.g. `bandit` for Python via the venv; `gosec` for Go if installed).
-Otherwise those metrics report `null` with a reason, never a fabricated score.
-Use `--no-judges` to skip the LLM judge ensemble and cut cost roughly threefold.
+| Path | Contents |
+|---|---|
+| `harness/` | CLI, agent loop, providers, harness adapters, sandbox executors, evaluator, pricing, reports, Code quality judging |
+| `tasks/` | Task suites, each with a charter and candidate log where it has an admission gate |
+| `docs/` | Methodology, metrics, reproducibility, judging protocols, published results |
+| `scripts/` | Task validation and mining, release figures, chart generators, calibration and gate tools |
+| `sandbox/` | Docker images for command execution and verification |
+| `backend/`, `dashboard/` | Optional API and web dashboard |
+| `tests/` | Harness test suite |
+
+Further reading: [ARCHITECTURE](docs/ARCHITECTURE.md), [METRICS](docs/METRICS.md),
+[REPRODUCIBILITY](docs/REPRODUCIBILITY.md), [HARNESS_BENCHMARKING](docs/HARNESS_BENCHMARKING.md),
+[CONTRIBUTING](CONTRIBUTING.md), [ROADMAP](docs/ROADMAP.md).
+
+## Development
+
+```bash
+make ci            # ruff, mypy, pytest, task validation, as run in CI
+make test          # fast tests only
+make validate-tasks
+```
+
+Never introduce em or en dashes anywhere in the repository; CI rejects them.
+Files bound by a frozen judging protocol hash are listed in `pyproject.toml`
+and must not be edited or reformatted; a new protocol version gets a new
+freeze instead.
 
 ## License
 
 Apache 2.0 (see LICENSE and NOTICE).
 
-## Provider terms & data usage
+## Provider terms and data usage
 
-VulcanBench is an independent evaluation harness. A few boundaries keep its use
-consistent with the model providers' terms, please read these before running or
-publishing results.
+VulcanBench is an independent evaluation harness and is not affiliated with,
+sponsored by, or endorsed by any model provider. Model and product names
+identify the systems under test.
 
-- **You bring your own keys, under your own agreement.** VulcanBench never
-  bundles or shares API credentials. Each run uses the keys in your environment
-  (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `ZAI_API_KEY`, `MOONSHOT_API_KEY`,
-  `DASHSCOPE_API_KEY`, `DEEPSEEK_API_KEY`), so every call is made
-  under *your* account and *your* commercial/API agreement with that provider.
-  You are responsible for staying within your provider's terms and usage
-  policies.
-
-- **Outputs are for evaluation, not training.** Recorded run artifacts (traces,
-  patches, summaries) capture model outputs solely for scoring, inspection, and
-  reproducibility. Both OpenAI and Anthropic prohibit using their outputs to
-  develop or train competing models, do not use VulcanBench artifacts, or any
-  published corpus of them, for that purpose. VulcanBench intentionally has no
-  "export outputs as a training dataset" feature.
-
-- **Trademarks & independence.** "OpenAI" and "GPT" are trademarks of OpenAI;
-  "Anthropic" and "Claude" are trademarks of Anthropic; "Z.ai" and "GLM" are
-  trademarks of Zhipu AI; "Kimi" and "Moonshot" are trademarks of Moonshot AI;
-  "Qwen" and "DashScope" are trademarks of Alibaba Cloud; "DeepSeek" is a
-  trademark of DeepSeek. VulcanBench is not
-  affiliated with, sponsored by, or endorsed by any of these companies. Model
-  and provider names are used only to identify the systems under test.
+- **Bring your own keys and subscriptions.** Every call is made under your
+  account and your agreement with that provider; VulcanBench never bundles or
+  shares credentials. Staying within each provider's terms is your
+  responsibility.
+- **Outputs are for evaluation, not training.** Run artifacts capture model
+  outputs solely for scoring, inspection and reproducibility. Providers
+  prohibit using their outputs to train competing models; do not use
+  VulcanBench artifacts, or any published corpus of them, for that purpose.
+  There is deliberately no feature that exports outputs as a training dataset.
 
 This is not legal advice; consult the current provider terms for authoritative
 guidance.
