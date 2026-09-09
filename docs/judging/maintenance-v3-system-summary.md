@@ -55,13 +55,13 @@ sub-scores and their mean; the judge never does arithmetic.
 ## Who judges
 
 The scored panel is two models from labs that have no model on the board:
-GLM 5.3 (Z.ai) and Grok 4.6 (xAI), equal weight. Neither shares a family
+Muse Spark 1.3 (Meta) and Grok 4.6 (xAI), equal weight. GLM 5.3 was tried
+first and failed the calibration exam by fabricating a quote. Neither shares a family
 with either solver, so neither is grading its own relative.
 
-Astra and Claude Opus 5 also review every submission, but as disclosed
-sensitivity panels outside the composite. Their gap against the neutral
-panel on their own family's code is a direct measurement of self-preference,
-published on the card rather than hidden.
+Astra and Claude Opus 5 were run as reviewers too, but by the benchmark
+owner's decision they are not scored, not shown, and not waited for; their
+receipts are kept as raw diagnostics only.
 
 Every judge session is fresh, blind to model and effort labels, tools
 disabled, read-only, outside the benchmark workspace, on a subscription
@@ -119,13 +119,12 @@ written down before the exam.
   rule and removed a gate clause that measured the wrong thing, one moved
   from three repeats to five and added the one-gate allowance after two runs
   produced two different single-gate noise failures.
-- Under the current frozen protocol both Astra and Opus 5 passed all twenty
-  gates with no allowance used. Astra has completed all 230 reviews; Opus 5
-  is most of the way through. Both now serve as the sensitivity panels.
+- Muse Spark 1.3 and Grok 4.6 both passed all twenty gates with no
+  allowance used and completed every review, probe, and match on all 230
+  submissions on September 9, 2026. Astra and Opus 5 also passed the exam
+  under an earlier protocol version but are not part of the published score.
 - A small Haiku "constrained reader" comprehension test failed its gate by
   one wrong answer in fifteen and is not published.
-- GLM 5.3 and Grok 4.6 have not yet taken the exam. If one fails, the other
-  stands alone under a pre-registered rule and the failure is published.
 - Every stop during the runs, every operator decision, and every retry is
   logged in the repository with the receipt it applies to.
 
