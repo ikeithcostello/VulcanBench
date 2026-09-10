@@ -62,7 +62,7 @@ reason when its analyzer is unavailable; a score is never fabricated.
 | Metric | Source |
 |---|---|
 | `functional` | Hidden `fail_to_pass` and `pass_to_pass` tests run after the agent finishes. 1.0 when every required test passes, otherwise proportional to the pass rate. Any regression guard failure zeroes it on the frontier suite. |
-| `quality` | Static analysis of the changed files: ruff and radon for Python, `cargo fmt` and `clippy` for Rust, toolchain-dependent elsewhere. |
+| `quality` | Lint and complexity of the changed files: ruff and radon for Python, `cargo fmt` and `clippy` for Rust, toolchain-dependent elsewhere. Reports call this factor lint and complexity so it is never confused with Code quality. |
 | `security` | bandit for Python, `cargo audit` plus an unsafe-delta penalty for Rust, gosec for Go, npm audit for JS and TS. |
 | `human_like` | Model-based code review. Off with `--no-judges`; choose the judge with `--judge-model` so a model never grades its own work. |
 | `efficiency` | Derived from tokens and steps, lower is better. |
@@ -72,10 +72,10 @@ The harness total re-normalizes over whichever metrics are present
 VulcanBench-SWE v4 reports use a fixed combined score instead:
 
 ```
-combined = 100 * (0.50 functional + 0.085 quality + 0.085 security + 0.33 code_quality)
+combined = 100 * (0.50 functional + 0.085 lint_and_complexity + 0.085 security + 0.33 code_quality)
 ```
 
-Code quality is a third of the combined score and is measured by the
+`lint_and_complexity` is the `quality` metric above. Code quality is a third of the combined score and is measured by the
 [Code quality protocol](#code-quality-judging) below, not by the run-time
 judge. Time and cost are reported beside the score, never folded into it.
 Details: [docs/METRICS.md](docs/METRICS.md).
