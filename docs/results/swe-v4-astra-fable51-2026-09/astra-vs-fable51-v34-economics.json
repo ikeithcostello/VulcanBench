@@ -1,0 +1,321 @@
+{
+  "population": "runs-code-quality-maintenance-v3.4 summary, 230 runs",
+  "ledger": "api-equivalent-costs.json",
+  "ledger_sha256": "7fa4c18e7c8045b74a9b06527d30c38a0d652d2f7fbeff3029e0e4a3fdf15883",
+  "pricing_verified": "2026-09-06",
+  "sources": {
+    "astra": "https://developers.openai.com/api/docs/models/gpt-6-astra",
+    "claude": "https://platform.claude.com/docs/en/about-claude/pricing",
+    "fable": "https://platform.claude.com/docs/en/models/fable-5-1/overview"
+  },
+  "totals": {
+    "astra": {
+      "usd": 225.037978,
+      "usd_upper": 419.41506,
+      "tokens": 97043705,
+      "hours": 12.003038611111112,
+      "runs": 115
+    },
+    "fable": {
+      "usd": 1159.1011435,
+      "usd_upper": 1159.1011435,
+      "tokens": 738373965,
+      "hours": 58.74556388888889,
+      "runs": 115
+    }
+  },
+  "groups": {
+    "astra/low": {
+      "model": "astra",
+      "effort": "low",
+      "n": 23,
+      "usd": {
+        "n": 23,
+        "mean": 1.7216979130434782,
+        "se": 0.41419451147245395
+      },
+      "usd_upper": {
+        "n": 23,
+        "mean": 3.2838545217391304,
+        "se": 0.791587613085265
+      },
+      "usd_total": 39.599052,
+      "tokens": {
+        "n": 23,
+        "mean": 0.8902040869565218,
+        "se": 0.28612606608110885
+      },
+      "tokens_total": 20474694,
+      "minutes": {
+        "n": 23,
+        "mean": 4.218694202898551,
+        "se": 0.9936658732225679
+      },
+      "fallbacks": 0
+    },
+    "astra/medium": {
+      "model": "astra",
+      "effort": "medium",
+      "n": 23,
+      "usd": {
+        "n": 23,
+        "mean": 1.481346695652174,
+        "se": 0.15597833408641493
+      },
+      "usd_upper": {
+        "n": 23,
+        "mean": 2.791000086956522,
+        "se": 0.31068572288799884
+      },
+      "usd_total": 34.070974,
+      "tokens": {
+        "n": 23,
+        "mean": 0.6842140434782609,
+        "se": 0.09267532940257299
+      },
+      "tokens_total": 15736923,
+      "minutes": {
+        "n": 23,
+        "mean": 3.8226376811594203,
+        "se": 0.22960227650142065
+      },
+      "fallbacks": 0
+    },
+    "astra/high": {
+      "model": "astra",
+      "effort": "high",
+      "n": 23,
+      "usd": {
+        "n": 23,
+        "mean": 1.7110647826086958,
+        "se": 0.1651317145058697
+      },
+      "usd_upper": {
+        "n": 23,
+        "mean": 3.217211086956522,
+        "se": 0.3238075532802952
+      },
+      "usd_total": 39.35449,
+      "tokens": {
+        "n": 23,
+        "mean": 0.7675118695652174,
+        "se": 0.10229690403344224
+      },
+      "tokens_total": 17652773,
+      "minutes": {
+        "n": 23,
+        "mean": 4.899905797101449,
+        "se": 0.2037660640563361
+      },
+      "fallbacks": 0
+    },
+    "astra/extra-high": {
+      "model": "astra",
+      "effort": "extra-high",
+      "n": 23,
+      "usd": {
+        "n": 23,
+        "mean": 2.302022260869565,
+        "se": 0.24434849380850918
+      },
+      "usd_upper": {
+        "n": 23,
+        "mean": 4.253696695652174,
+        "se": 0.4698076783233316
+      },
+      "usd_total": 52.946512,
+      "tokens": {
+        "n": 23,
+        "mean": 0.9274744347826087,
+        "se": 0.1346927174052377
+      },
+      "tokens_total": 21331912,
+      "minutes": {
+        "n": 23,
+        "mean": 8.090497101449275,
+        "se": 0.5844684964850173
+      },
+      "fallbacks": 0
+    },
+    "astra/max": {
+      "model": "astra",
+      "effort": "max",
+      "n": 23,
+      "usd": {
+        "n": 23,
+        "mean": 2.5681282608695652,
+        "se": 0.2838587216870519
+      },
+      "usd_upper": {
+        "n": 23,
+        "mean": 4.689675,
+        "se": 0.5469322520411882
+      },
+      "usd_total": 59.06695,
+      "tokens": {
+        "n": 23,
+        "mean": 0.9498870869565218,
+        "se": 0.1646698492142527
+      },
+      "tokens_total": 21847403,
+      "minutes": {
+        "n": 23,
+        "mean": 10.280539855072464,
+        "se": 0.514791796730318
+      },
+      "fallbacks": 0
+    },
+    "fable/low": {
+      "model": "fable",
+      "effort": "low",
+      "n": 23,
+      "usd": {
+        "n": 23,
+        "mean": 7.963719152173913,
+        "se": 2.2181124769527103
+      },
+      "usd_upper": {
+        "n": 23,
+        "mean": 7.963719152173913,
+        "se": 2.2181124769527103
+      },
+      "usd_total": 183.1655405,
+      "tokens": {
+        "n": 23,
+        "mean": 4.384071043478261,
+        "se": 1.7435533787619102
+      },
+      "tokens_total": 100833634,
+      "minutes": {
+        "n": 23,
+        "mean": 26.89704927536232,
+        "se": 7.04209649833395
+      },
+      "fallbacks": 1
+    },
+    "fable/medium": {
+      "model": "fable",
+      "effort": "medium",
+      "n": 23,
+      "usd": {
+        "n": 23,
+        "mean": 9.186009663043478,
+        "se": 2.6597248801056277
+      },
+      "usd_upper": {
+        "n": 23,
+        "mean": 9.186009663043478,
+        "se": 2.6597248801056277
+      },
+      "usd_total": 211.27822225,
+      "tokens": {
+        "n": 23,
+        "mean": 6.9721782608695655,
+        "se": 3.284332307838848
+      },
+      "tokens_total": 160360100,
+      "minutes": {
+        "n": 23,
+        "mean": 31.72126666666667,
+        "se": 9.371995047031866
+      },
+      "fallbacks": 3
+    },
+    "fable/high": {
+      "model": "fable",
+      "effort": "high",
+      "n": 23,
+      "usd": {
+        "n": 23,
+        "mean": 9.70157472826087,
+        "se": 2.390256854448269
+      },
+      "usd_upper": {
+        "n": 23,
+        "mean": 9.70157472826087,
+        "se": 2.390256854448269
+      },
+      "usd_total": 223.13621875,
+      "tokens": {
+        "n": 23,
+        "mean": 5.488274043478261,
+        "se": 2.32640170373681
+      },
+      "tokens_total": 126230303,
+      "minutes": {
+        "n": 23,
+        "mean": 28.76137608695652,
+        "se": 6.825142829108844
+      },
+      "fallbacks": 2
+    },
+    "fable/extra-high": {
+      "model": "fable",
+      "effort": "extra-high",
+      "n": 23,
+      "usd": {
+        "n": 23,
+        "mean": 14.485635054347826,
+        "se": 4.229534846712801
+      },
+      "usd_upper": {
+        "n": 23,
+        "mean": 14.485635054347826,
+        "se": 4.229534846712801
+      },
+      "usd_total": 333.16960625,
+      "tokens": {
+        "n": 23,
+        "mean": 11.435379173913043,
+        "se": 5.032567610691633
+      },
+      "tokens_total": 263013721,
+      "minutes": {
+        "n": 23,
+        "mean": 38.77324927536232,
+        "se": 10.483612671413571
+      },
+      "fallbacks": 3
+    },
+    "fable/max": {
+      "model": "fable",
+      "effort": "max",
+      "n": 23,
+      "usd": {
+        "n": 23,
+        "mean": 9.058763293478261,
+        "se": 0.869992849218678
+      },
+      "usd_upper": {
+        "n": 23,
+        "mean": 9.058763293478261,
+        "se": 0.869992849218678
+      },
+      "usd_total": 208.35155575,
+      "tokens": {
+        "n": 23,
+        "mean": 3.823313347826087,
+        "se": 0.8005070608390413
+      },
+      "tokens_total": 87936207,
+      "minutes": {
+        "n": 23,
+        "mean": 27.09635579710145,
+        "se": 3.764144230041088
+      },
+      "fallbacks": 2
+    }
+  },
+  "limitations": [
+    "Astra input includes cache reads; output includes reasoning. Neither is counted twice.",
+    "Astra records zero cache writes. Per-request input sizes are absent in ephemeral CLI logs.",
+    "Astra central estimate assumes standard short-context rates, no Batch/Flex/Fast discounts or premiums.",
+    "Astra bound applies 2x input/cache and 1.5x output to all usage in runs exceeding 272k cumulative input; actual per-request premiums may be lower.",
+    "Claude includes observed 5m/1h caches, Fable, Opus 5, Opus 4.8 and auxiliary Haiku usage.",
+    "One internal Opus 5 receipt lacks a model-specific cache TTL; its list cost matches the 5m rate and is retained.",
+    "CLI auxiliary accounting differs. Estimates cover exposed receipts, not an independently observed API invoice."
+  ],
+  "summary_sha256": "e0d51a74c7e6e0c4c1656e1c87b16d14b24edfbafd7b69035b5db41201786a62",
+  "png_sha256": "dc73f8c8b64f06a1b7c6d85608c5badf85de78680d6c06af062ad30b6069de22",
+  "supporting_table": "astra-vs-fable51-v34-economics-efforts.csv"
+}
