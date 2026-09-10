@@ -1,0 +1,279 @@
+{
+  "run_id": "legacy-depotcore-binary-parity-2d9582fe",
+  "task_id": "legacy-depotcore-binary-parity",
+  "model": "claude-code:claude-opus-5",
+  "steps": 568,
+  "scores": {
+    "functional": 1.0,
+    "quality": 0.7441,
+    "security": 1.0,
+    "efficiency": 0.0,
+    "human_like": null,
+    "total": 0.8462,
+    "metric_details": {
+      "quality": {
+        "languages": {
+          "python": {
+            "tool": "ruff+radon",
+            "loc": 431,
+            "violations": 3,
+            "avg_complexity": 5.481481481481482,
+            "maintainability_index": 18.96,
+            "sub_scores": {
+              "lint": 0.9861,
+              "complexity": 0.9759,
+              "maintainability": 0.1896
+            },
+            "score": 0.7441
+          }
+        }
+      },
+      "security": {
+        "languages": {
+          "python": {
+            "tool": "bandit",
+            "high": 0,
+            "medium": 0,
+            "low": 0,
+            "score": 1.0
+          }
+        }
+      },
+      "human_like": {
+        "reason": "judges disabled"
+      }
+    }
+  },
+  "artifacts": {
+    "trace": "runs-effort-opus5/high/legacy-depotcore-binary-parity-2d9582fe/trace.jsonl",
+    "replay_html": "runs-effort-opus5/high/legacy-depotcore-binary-parity-2d9582fe/replay.html"
+  },
+  "finished_at": "2026-09-09T09:23:23.234809+00:00",
+  "total_tokens": 26239779,
+  "tokens": {
+    "prompt": 25048368,
+    "completion": 1191411,
+    "total": 26239779,
+    "cached_input": 0,
+    "reasoning_output": 0
+  },
+  "cost_usd": 155.027115,
+  "cost_detail": {
+    "agent": 155.027115,
+    "judges": 0.0,
+    "total": 155.027115,
+    "model_priced": true,
+    "agent_input_tokens": 25048368,
+    "agent_cached_input_tokens": 0,
+    "agent_uncached_input_tokens": 25048368,
+    "cache_pricing_applied": false
+  },
+  "economics": {
+    "billing_mode": "subscription-included",
+    "cost_basis": "subscription-plus-api-equivalent",
+    "marginal_cash_usd": null,
+    "overage_cash_usd": null,
+    "grading_cash_usd": null,
+    "grading_api_equivalent_usd": 0.0,
+    "plan_name": "max",
+    "plan_fee_usd": null,
+    "allocated_plan_cost_usd": null,
+    "api_equivalent_cost_usd": 155.027115,
+    "cli_reported_cost_usd": 160.9263645000002,
+    "quota": null,
+    "measurement_quality": {
+      "marginal_cash_usd": "unavailable",
+      "overage_cash_usd": "unavailable",
+      "allocated_plan_cost_usd": "unavailable",
+      "api_equivalent_cost_usd": "estimated-from-reported-tokens",
+      "grading_cash_usd": "unavailable",
+      "grading_api_equivalent_usd": "estimated-from-reported-tokens",
+      "quota": "unavailable"
+    }
+  },
+  "duration_s": 17763.628,
+  "started_at": "2026-09-09T04:27:19.413493+00:00",
+  "finished": true,
+  "cost_capped": false,
+  "manifest": {
+    "model": "claude-code:claude-opus-5",
+    "judge_model": "claude-code:claude-opus-5",
+    "runtime": {
+      "python": "3.12.14",
+      "platform": "darwin",
+      "host_python": "3.12.14",
+      "host_platform": "darwin"
+    },
+    "sandbox": {
+      "mode": "local",
+      "image": null,
+      "network": false,
+      "resources": null,
+      "oom_kills": null
+    },
+    "tools": {
+      "git": "git version 2.50.1 (Apple Git-155)",
+      "ruff": "ruff 0.16.5",
+      "bandit": "bandit 1.9.4",
+      "radon": "6.0.1",
+      "go": "go version go1.27.0 darwin/arm64",
+      "node": "v24.19.0"
+    },
+    "task": {
+      "repo_scale": "micro",
+      "task_complexity": "localized",
+      "languages": [
+        "python"
+      ],
+      "difficulty": "veryhard",
+      "file_count": 15,
+      "loc": 617
+    }
+  },
+  "task_hash": "62417852858939e06fde028843b46d6a475f6e0ee79171df4f63bb4c351a1f78",
+  "suite": null,
+  "suite_id": null,
+  "effort": {
+    "requested": "high",
+    "provider": "claude-code",
+    "provider_value": "high",
+    "supported": true
+  },
+  "cli_agent": {
+    "harness": "claude-code",
+    "harness_version": "2.1.266 (Claude Code)",
+    "billing": "subscription",
+    "cost_basis": "api-equivalent",
+    "execution_boundary": "host-workspace; permission-mode=auto; safe-mode",
+    "auth_method": "subscription",
+    "plan_name": "max",
+    "requested_model": "claude-opus-5",
+    "reported_model": "claude-opus-5",
+    "model_identity_confidence": "cli-reported",
+    "session_id": "0c384317-442c-4ced-9e27-ece57bd3fac0",
+    "subtype": "success",
+    "num_turns": 568,
+    "cached_input_tokens": 0,
+    "reasoning_output_tokens": 0,
+    "cli_reported_cost_usd": 160.9263645000002,
+    "cli_total_tokens": null,
+    "reported_effort": null,
+    "sandbox_profile": null
+  },
+  "integrity_audit": {
+    "web": {
+      "verdict": "no_web",
+      "web_searches": 0,
+      "web_fetches": 0,
+      "web_blocked": 0,
+      "hosts": [],
+      "upstream": {
+        "repo": "",
+        "pr": "",
+        "commit": ""
+      },
+      "contaminated": false
+    },
+    "filesystem": {
+      "verdict": "benchmark_data_access",
+      "out_of_workspace_paths": [
+        "/.git/",
+        "/LODGE",
+        "/_cmd_shelve/",
+        "/bin/sh",
+        "/depotcore.py",
+        "/legacy",
+        "/legacy/p",
+        "/legacy/run",
+        "/minimal",
+        "/minimal/",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/b4nht1b72.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/b9chueuvw.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/ba0uhjrpe.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/baf5pfbmv.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/bbmnpj08b.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/bbywqizzs.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/bdpw58yst.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/bdx6txcyn.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/be86415no.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/bgbvjziwb.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/bgtkrggl5.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/bm79hjls2.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/bsxcgeuqu.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/btfrs45cp.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/btzv7ner2.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/buhzel5ht.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/bum73bkzc.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/bxsr3x5e9.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/bzamf8bp9.output",
+        "/redone",
+        "/self._emit",
+        "/self.since_square",
+        "/tmp/dc",
+        "/tmp/dc/",
+        "/tmp/dc/K_all.py",
+        "/tmp/dc/K_gone.py",
+        "/tmp/dc/K_out.py",
+        "/tmp/dc/L_now.py",
+        "/tmp/dc/L_raw.py",
+        "/tmp/dc/S1_"
+      ],
+      "benchmark_data_paths": [
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/b4nht1b72.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/b9chueuvw.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/ba0uhjrpe.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/baf5pfbmv.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/bbmnpj08b.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/bbywqizzs.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/bdpw58yst.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/bdx6txcyn.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/be86415no.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/bgbvjziwb.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/bgtkrggl5.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/bm79hjls2.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/bsxcgeuqu.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/btfrs45cp.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/btzv7ner2.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/buhzel5ht.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/bum73bkzc.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/bxsr3x5e9.output",
+        "/private/tmp/claude-501/-private-var-folders-8c-l0jw07rj1l90scrh6fbl1m-w0000gn-T-vulcanbench-legacy-depotcore-binary-parity-2d9582fe-lduifw4w-workspace/0c384317-442c-4ced-9e27-ece57bd3fac0/tasks/bzamf8bp9.output"
+      ],
+      "answer_key_paths": [],
+      "contaminated": true
+    },
+    "contaminated": true
+  },
+  "verifier": {
+    "scores": {
+      "functional": 1.0
+    },
+    "fail_to_pass": {
+      "lift": true,
+      "notch": true,
+      "wear_drag": true,
+      "short_round": true,
+      "shelve_blocks": true,
+      "ledge_return": true,
+      "sag": true,
+      "distrust": true,
+      "held_grouping": true,
+      "square_rebuild": true,
+      "square_wear": true,
+      "square_chain": true,
+      "square_resurrect": true,
+      "full_corpus_parity": true
+    },
+    "pass_to_pass": {
+      "flow": true,
+      "square": true,
+      "void": true,
+      "rejects": true
+    },
+    "pass_to_pass_ok": true,
+    "details": [
+      "fail_to_pass 14/14 passing"
+    ]
+  },
+  "replay_command": "vulcanbench replay legacy-depotcore-binary-parity-2d9582fe"
+}
