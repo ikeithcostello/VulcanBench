@@ -21,17 +21,32 @@ def reprice(summary_path: Path) -> tuple[float | None, float | None]:
     s = json.loads(summary_path.read_text())
     tokens = s["tokens"]
     model = s["model"]
-    new = cost_usd(model, tokens["prompt"], tokens["completion"], cached_input_tokens=tokens.get("cached_input", 0))
+    new = cost_usd(
+        model,
+        tokens["prompt"],
+        tokens["completion"],
+        cached_input_tokens=tokens.get("cached_input", 0),
+    )
     old = s.get("cost_usd")
     if new is None or (old is not None and abs(new - old) < 1e-9):
         return old, new
-    s.setdefault("repriced", {"original_cost_usd": old, "original_cost_detail": s.get("cost_detail")})
+    s.setdefault(
+        "repriced", {"original_cost_usd": old, "original_cost_detail": s.get("cost_detail")}
+    )
     s["repriced"]["date"] = datetime.date.today().isoformat()
     s["repriced"]["reason"] = "price table update: cached-input rate added or list price changed"
     s["cost_usd"] = new
     detail = s.get("cost_detail") or {}
     judges = detail.get("judges", 0.0) or 0.0
-    detail.update({"agent": new - judges, "total": new, "cache_pricing_applied": bool(tokens.get("cached_input") and has_cached_input_price(model))})
+    detail.update(
+        {
+            "agent": new - judges,
+            "total": new,
+            "cache_pricing_applied": bool(
+                tokens.get("cached_input") and has_cached_input_price(model)
+            ),
+        }
+    )
     s["cost_detail"] = detail
     if s.get("economics"):
         s["economics"]["api_equivalent_cost_usd"] = new
