@@ -295,8 +295,8 @@ def main() -> None:  # noqa: PLR0912, PLR0915, linear top-to-bottom card layout
         "Fable were measured on a different machine from Opus 5, so the runtime panel compares "
         "across hosts: read the accuracy gaps as robust and the wall-clock gaps as indicative."
     )
-    for i, line in enumerate(textwrap.wrap(foot, width=168)):
-        text(0.055, 0.052 - i * 0.017, line, 12, color=MUTED)
+    for i, line in enumerate(textwrap.wrap(foot, width=185)):
+        text(0.055, 0.056 - i * 0.016, line, 11.5, color=MUTED)
 
     OUT.mkdir(parents=True, exist_ok=True)
     png = OUT / "swe-v4-three-model-effort.png"
