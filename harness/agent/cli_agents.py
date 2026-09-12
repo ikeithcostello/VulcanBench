@@ -2249,7 +2249,7 @@ def run_claude_code_task(  # noqa: PLR0912, PLR0915, linear stream-parse loop
         if container_name is not None:
             # Killing the docker client alone leaves the container running.
             _kill_agent_container(container_name)
-        proc.kill()
+        _kill_process_group(proc)
 
     watchdog: threading.Timer | None = None
     if timeout_s is not None:
@@ -2559,7 +2559,7 @@ def run_codex_task(  # noqa: PLR0912, PLR0915, linear process/stream adapter
         if container_name is not None:
             # Killing the docker client alone leaves the container running.
             _kill_agent_container(container_name)
-        proc.kill()
+        _kill_process_group(proc)
 
     watchdog: threading.Timer | None = None
     if timeout_s is not None:
