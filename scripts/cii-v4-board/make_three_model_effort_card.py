@@ -291,7 +291,9 @@ def main() -> None:  # noqa: PLR0912, PLR0915, linear top-to-bottom card layout
         "mean over attempts. Intervals are one standard error: across tasks for Opus 5, "
         "binomial on the observed proportion for Astra and Fable. The judged Code quality panel "
         "covered Astra and Fable only, so combined score is omitted here rather than estimated "
-        "for Opus 5. Host execution, subscription harnesses, uniform 10-hour timeout."
+        "for Opus 5. Host execution, subscription harnesses, uniform 10-hour timeout. Astra and "
+        "Fable were measured on a different machine from Opus 5, so the runtime panel compares "
+        "across hosts: read the accuracy gaps as robust and the wall-clock gaps as indicative."
     )
     for i, line in enumerate(textwrap.wrap(foot, width=168)):
         text(0.055, 0.052 - i * 0.017, line, 12, color=MUTED)
