@@ -26,5 +26,11 @@
     "legacy-cellarcore-binary-parity",
     "legacy-paddockcore-binary-parity"
   ],
-  "version": "2.0.0"
+  "version": "2.0.0",
+  "flat_budget": {
+    "suggested_timeout_s": 10800,
+    "suggested_max_steps": 540,
+    "adopted": "2026-09-13",
+    "note": "Every task listed above carries this flat sanity bound; scripts/stamp_task_budgets.py checks against it instead of the complexity formula. Rationale in docs/DECISIONS.md."
+  }
 }

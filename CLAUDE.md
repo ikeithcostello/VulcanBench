@@ -13,6 +13,14 @@ use "to" for ranges (for example "10 to 20", not "10–20").
 
 Keep headings plain (no decorative dashes around them) on shareable assets.
 
+## Operating decisions
+
+Run-condition decisions (task timeouts, sweep concurrency, and why) are
+logged with their evidence in [docs/DECISIONS.md](docs/DECISIONS.md). Read
+the relevant entry before changing budgets, concurrency, or sweep launchers,
+and add an entry when a decision like that is made. Current: v4 tasks carry
+a flat 3-hour timeout; sweeps run one task at a time.
+
 ## Brand: logo and typography
 
 Use these whenever producing anything user-facing or shareable (charts, reports,
