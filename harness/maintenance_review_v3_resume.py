@@ -26,7 +26,9 @@ Usage: python -m harness.maintenance_review_v3_resume calibrate --panel claude
 
 from __future__ import annotations
 
+import importlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -34,9 +36,18 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 
-from harness import maintenance_review_v3 as v3
 from harness import retrospective_judging as base
-from harness.maintenance_review_v3 import OUT
+
+# The protocol module to drive. v3.5 reuses the frozen v3 implementation with
+# its population and directories rebound, so the wrapper must look those up on
+# the module at call time rather than importing them by value.
+MODULE = os.environ.get("VB_MAINT_MODULE", "harness.maintenance_review_v3")
+v3 = importlib.import_module(MODULE)
+
+
+def _out():
+    return v3.OUT
+
 
 SUBTYPE = "error_max_structured_output_retries"
 EXCERPT_ERROR = "Unsupported evidence excerpt"
@@ -58,25 +69,25 @@ def stage_kind(stage: str) -> str:
 def payload_for(stage: str, ident: str) -> dict | None:  # noqa: PLR0911, one branch per stage
     """Rebuild the frozen payload for a call so a recovered response can be validated."""
     if stage in ("primary", "repeat"):
-        return v3.read(OUT / "evidence" / f"{ident}.json")
+        return v3.read(_out() / "evidence" / f"{ident}.json")
     if stage == "calibration":
         if ident.startswith("control-"):
-            return v3.read(OUT / "controls" / f"control-{ident.split('-')[1]}.json")
+            return v3.read(_out() / "controls" / f"control-{ident.split('-')[1]}.json")
         return None
     if stage == "pairwise":
         a, b = ident.split("-submission-")
         b = "submission-" + b
         return {
-            "A": v3.read(OUT / "evidence" / f"{a}.json"),
-            "B": v3.read(OUT / "evidence" / f"{b}.json"),
+            "A": v3.read(_out() / "evidence" / f"{a}.json"),
+            "B": v3.read(_out() / "evidence" / f"{b}.json"),
         }
     if stage == "probe":
-        return v3.probe_evidence(v3.read(OUT / "evidence" / f"{ident}.json"))
+        return v3.probe_evidence(v3.read(_out() / "evidence" / f"{ident}.json"))
     if stage == "match":
-        probe = OUT / "calls" / "claude" / "probe" / ident / "selected.json"
+        probe = _out() / "calls" / "claude" / "probe" / ident / "selected.json"
         if not probe.exists():
             return None
-        row = next(r for r in v3.read(OUT / "private-manifest.json") if r["id"] == ident)
+        row = next(r for r in v3.read(_out() / "private-manifest.json") if r["id"] == ident)
         return {
             "key": v3.load_key(row["task"])["quirks"],
             "departures": v3.read(probe)["departures"],
@@ -118,7 +129,7 @@ def retry_external_kill(folder: Path) -> bool:
     }
     receipt.write_text(json.dumps(rec, indent=2, sort_keys=True))
     print(
-        json.dumps({"event": "external_kill_retry", "call": str(folder.relative_to(OUT))}),
+        json.dumps({"event": "external_kill_retry", "call": str(folder.relative_to(_out()))}),
         flush=True,
     )
     return True
@@ -156,7 +167,11 @@ def quota_resume(folder: Path) -> bool:
     if prior >= QUOTA_MAX_RESUMES:
         print(
             json.dumps(
-                {"event": "quota_stop_limit", "call": str(folder.relative_to(OUT)), "stops": prior}
+                {
+                    "event": "quota_stop_limit",
+                    "call": str(folder.relative_to(_out())),
+                    "stops": prior,
+                }
             ),
             flush=True,
         )
@@ -179,7 +194,7 @@ def quota_resume(folder: Path) -> bool:
         json.dumps(
             {
                 "event": "quota_resume",
-                "call": str(folder.relative_to(OUT)),
+                "call": str(folder.relative_to(_out())),
                 "prior_stops": prior,
                 "wait_s": wait,
             }
@@ -254,7 +269,7 @@ def recover_match_ids(folder: Path, panel: str, stage: str) -> bool:
             json.dumps(
                 {
                     "event": "match_id_recovery_applied",
-                    "call": str(folder.relative_to(OUT)),
+                    "call": str(folder.relative_to(_out())),
                     "attempt": attempt,
                 }
             ),
@@ -311,7 +326,7 @@ def accept_fallback(folder: Path, panel: str, stage: str) -> bool:
             json.dumps(
                 {
                     "event": "reviewer_fallback_accepted",
-                    "call": str(folder.relative_to(OUT)),
+                    "call": str(folder.relative_to(_out())),
                     "attempt": n,
                 }
             ),
@@ -529,7 +544,7 @@ def recover_excerpts(folder: Path, panel: str, stage: str) -> bool:  # noqa: PLR
                 json.dumps(
                     {
                         "event": "excerpt_recovery_applied",
-                        "call": str(folder.relative_to(OUT)),
+                        "call": str(folder.relative_to(_out())),
                         "attempt": attempt,
                         "holders": sorted(recovered),
                     }
@@ -543,7 +558,7 @@ def recover_excerpts(folder: Path, panel: str, stage: str) -> bool:  # noqa: PLR
 def newest_unresolved(panel: str) -> Path | None:
     stopped = [
         d
-        for d in (OUT / "calls" / panel).glob("*/*/")
+        for d in (_out() / "calls" / panel).glob("*/*/")
         if not (d / "selected.json").exists() and (d / "attempt-1.json").exists()
     ]
     return max(stopped, key=lambda d: (d / "attempt-1.json").stat().st_mtime) if stopped else None
@@ -577,7 +592,7 @@ def apply_rule(folder: Path) -> bool:
     }
     (folder / "attempt-1.json").write_text(json.dumps(receipt, indent=2, sort_keys=True))
     print(
-        json.dumps({"event": "operator_rule_applied", "call": str(folder.relative_to(OUT))}),
+        json.dumps({"event": "operator_rule_applied", "call": str(folder.relative_to(_out()))}),
         flush=True,
     )
     return True
@@ -588,9 +603,7 @@ def main() -> int:
     panel = args[args.index("--panel") + 1]
     applied = 0
     while True:
-        proc = subprocess.run(
-            [sys.executable, "-u", "-m", "harness.maintenance_review_v3", *args], check=False
-        )
+        proc = subprocess.run([sys.executable, "-u", "-m", MODULE, *args], check=False)
         if proc.returncode == 0:
             print(
                 json.dumps({"event": "stage_complete", "operator_rule_applications": applied}),

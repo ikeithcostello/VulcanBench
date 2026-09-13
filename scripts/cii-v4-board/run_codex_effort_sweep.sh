@@ -53,6 +53,9 @@ for level in $LEVELS; do
       continue
     fi
     case "$out" in
+      *"refresh token has expired"*|*"sign in again"*|*"Please log out"*|*"not logged in"*)
+        echo "=== $MODEL effort=$level AUTH FAILURE at $done_count/23: the Codex subscription login has expired. Run 'codex login', then rerun this script. $(date '+%F %H:%M:%S')"
+        exit 3 ;;
       *"limit reached"*|*"usage limit"*|*"quota"*|*"Quota"*|*"rate limit"*)
         echo "=== $MODEL effort=$level quota exhausted at $done_count/23 (exit=$status), waiting ${QUOTA_WAIT}s $(date '+%H:%M:%S')"
         sleep "$QUOTA_WAIT" ;;
