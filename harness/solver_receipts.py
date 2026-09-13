@@ -75,7 +75,7 @@ def solver_receipt(run, summary):
         result["historical_summary_unit"] = (
             "Cache-price-weighted units from last result, not raw tokens"
         )
-    elif summary["model"] == "codex:gpt-6-astra":
+    elif summary["model"].startswith("codex:"):
         receipts = [e["usage"] for e in events if e.get("type") == "turn.completed"]
         if len(receipts) != 1:
             raise ValueError("Unexpected Astra result count")

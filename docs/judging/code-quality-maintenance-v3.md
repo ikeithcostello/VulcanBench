@@ -513,6 +513,36 @@ run directory `runs-code-quality-maintenance-v3.4`.
   Contributor tier; the judge uses the Standard tier and a separate session
   store. Contention shows up only as pauses, never as changed results.
 
+## Amendment v3.5, September 13, 2026: the same protocol on GPT-5.5 and Luna
+
+Nothing in the rubric, controls, quirk keys, gates, repeats, seed or judges
+changes. The amendment applies the protocol to a second population and
+simplifies the layout. Protocol id `code-quality-maintenance-v3.5`; run
+directory `runs-code-quality-maintenance-v3.5`; runner
+`harness/maintenance_review_v35.py`, which reuses the frozen v3 implementation
+as a library and replaces only the population freeze.
+
+- Population: the September 2026 GPT-5.5 and GPT-5.6 Luna effort sweeps
+  through Codex on the same 23 tasks, one attempt per task and level. GPT-5.5
+  has four levels because its API has no max level; Luna has five. 207
+  submissions when every run is judgeable.
+- A run that did not finish cleanly is excluded rather than judged, with the
+  reason recorded in the population record and the protocol. The first
+  GPT-5.5 extra-high attempt on paddockcore overran the ten-hour cap because
+  a harness bug left the Codex worker alive after the launcher was killed; it
+  was graded as a timeout for the functional score and is not a valid capped
+  attempt for review. The task is re-run once at extra-high under the fixed
+  harness, disclosed as such; if the re-run also fails to finish, the cell is
+  published with 22 judged submissions.
+- Both neutral judges score in this one directory. Muse Spark 1.3 and Grok
+  4.6 keep their v3.4 and v3.3 settings and binary pins, and each retakes the
+  identical calibration exam under v3.5 before any counted call, because the
+  protocol requires the exam before scoring a population, not once per judge.
+- No sensitivity panels. Astra and Opus 5 are not run.
+- The v3.4 record is unchanged and, because this amendment edits this
+  document, v3.4 is re-run from a git worktree pinned at its freeze commit
+  (`VulcanBench-frozen-v34`), as v3.2 and v3.3 are.
+
 ## Not yet done
 
 - v3.4 calibration results for Muse Spark 1.3, v3.3 results for Grok 4.6,
