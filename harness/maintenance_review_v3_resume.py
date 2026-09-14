@@ -135,6 +135,48 @@ def retry_external_kill(folder: Path) -> bool:
     return True
 
 
+NETWORK_MARKERS = (
+    "ENOTFOUND",
+    "ECONNRESET",
+    "ETIMEDOUT",
+    "ECONNREFUSED",
+    "[unavailable] getaddrinfo",
+)
+
+
+def retry_network_fault(folder: Path) -> bool:
+    """A judge CLI that could not reach its API (DNS or connection failure) produced no response.
+
+    Grants the single fresh attempt the protocol allows for transport faults
+    when only attempt 1 exists, its error is a network-layer failure, and its
+    stream carries no model output.
+    """
+    receipt = folder / "attempt-1.json"
+    if not receipt.exists() or (folder / "attempt-2.json").exists():
+        return False
+    rec = json.loads(receipt.read_text())
+    if rec.get("status") != "failed" or rec.get("retryable") is not False:
+        return False
+    error = str(rec.get("error", ""))
+    if not any(marker in error for marker in NETWORK_MARKERS):
+        return False
+    stream = folder / "attempt-1.stream.jsonl"
+    if stream.exists() and "assistant" in stream.read_text():
+        return False
+    rec["retryable"] = True
+    rec["operator_review"] = {
+        "at": datetime.now(UTC).isoformat(),
+        "finding": f"Judge CLI could not reach its API ({error.strip()[-120:]}); no response was produced.",
+        "action": "Transport fault: one fresh attempt per the protocol; receipt retained.",
+    }
+    receipt.write_text(json.dumps(rec, indent=2, sort_keys=True))
+    print(
+        json.dumps({"event": "network_fault_retry", "call": str(folder.relative_to(_out()))}),
+        flush=True,
+    )
+    return True
+
+
 QUOTA_MARKERS = ("resource_exhausted", "RetriableError", "rate limit", "rate_limit", "429")
 QUOTA_MAX_RESUMES = 12
 
@@ -624,6 +666,9 @@ def main() -> int:
             applied += 1
             continue
         if folder is not None and retry_external_kill(folder):
+            applied += 1
+            continue
+        if folder is not None and retry_network_fault(folder):
             applied += 1
             continue
         if folder is not None and quota_resume(folder):
