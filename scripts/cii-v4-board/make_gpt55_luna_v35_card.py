@@ -538,7 +538,7 @@ def main():  # noqa: PLR0912, PLR0915, one linear figure
     plt.close(fig)
     table = OUTPUT / f"gpt55-vs-luna-v35{suffix}-efforts.csv"
     with table.open("w", newline="") as handle:
-        writer = csv.writer(handle)
+        writer = csv.writer(handle, lineterminator="\n")
         writer.writerow(
             [
                 "model",
