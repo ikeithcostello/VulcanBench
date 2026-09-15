@@ -162,6 +162,14 @@ def main():
                 "state_at_amendment": "minimal: 23/23 complete; low through ultra not started",
                 "solver_conditions_changed": False,
             },
+            {
+                "at": "2026-09-15T15:50:00+00:00",
+                "change": "Task timeouts follow the suite restamp in PR #114 (commit ff3bf1ec): flat 10800 s (3 h) per task instead of 36000 s (blendcore 5400 s)",
+                "reason": "Suite-wide policy change recorded in docs/DECISIONS.md on 2026-09-13; the same bound was applied mid-sweep to the in-flight GPT-5.6 Luna run. Task hashes are unchanged; only agent_hints budgets moved",
+                "state_at_amendment": "minimal: 23/23 complete under 10 h; low: 17/23 complete under 10 h; remaining 6 low tasks and medium through ultra run under 3 h",
+                "solver_conditions_changed": True,
+                "comparability_note": "Under a 3 h cap, 6 minimal runs (tallycore, granarycore, depotcore, lodgecore, cellarcore, paddockcore) and 1 low run (tallycore) would have scored 0; four of them scored 0.43 to 0.64 and low tallycore 0.875 as recorded. Minimal mean 0.717 as scored versus 0.620 if capped; low-so-far 0.842 versus 0.791",
+            },
         ],
         "boundary": "Kernel-denied checkout/prior agent sessions/shared temp artifacts; isolated writes and explicit TMPDIR guidance; web tools disabled; shell network not isolated",
         "source_hashes": {
