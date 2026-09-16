@@ -543,6 +543,42 @@ as a library and replaces only the population freeze.
   document, v3.4 is re-run from a git worktree pinned at its freeze commit
   (`VulcanBench-frozen-v34`), as v3.2 and v3.3 are.
 
+## Amendment v3.6, September 15, 2026: the same protocol on GPT-5.6 Terra
+
+Nothing in the rubric, controls, quirk keys, gates, repeats, seed or judges
+changes. The amendment applies the protocol to a third population, the
+September 2026 GPT-5.6 Terra effort sweep through Codex, so that Terra can
+join GPT-5.5, Luna, Astra and Fable 5.1 on one board scored the same way.
+Protocol id `code-quality-maintenance-v3.6`; run directory
+`runs-code-quality-maintenance-v3.6`; runner
+`harness/maintenance_review_v36.py`, which reuses the frozen v3 implementation
+as a library and replaces only the population freeze, as v3.5 does.
+
+- Population: GPT-5.6 Terra at all five levels on the same 23 tasks, one
+  attempt per task and level, 115 submissions when every run is judgeable.
+- A run that did not finish cleanly is excluded rather than judged, with the
+  reason recorded, as in v3.5.
+- A task and level with no attempt is recorded under `missing` in the
+  population record and the protocol, with the reason, and the cell is
+  published with the submissions it has. At the freeze, paddockcore at max
+  has no attempt: from 06:00 PDT on September 15 every launch was refused by
+  the Codex API with "You've hit your usage limit ... try again at Sep 19th,
+  2026 1:10 AM" before any work, so the cell freezes at 22. One refused
+  attempt is kept under `runs-effort-terra/max-quota-refused/` as evidence.
+  When the quota window reopens the task is run once at max and judged as a
+  separate top-up freeze (v3.6.1) that adds one submission to this cell
+  under the same calibration; the v3.6 record is not rewritten.
+- Both neutral judges score in this one directory with their v3.4 and v3.3
+  settings and binary pins, and each retakes the identical calibration exam
+  under v3.6 before any counted call.
+- Diagnostics: with a single model in the population, the pairwise checks
+  pair the same task at two effort levels two steps apart in the level
+  order, one pair per level, skipping a pair whose submission is missing.
+- No sensitivity panels.
+- The v3.5 record is unchanged and, because this amendment edits this
+  document, v3.5 would be re-run from a git worktree pinned at its freeze
+  commit, as v3.2 to v3.4 are.
+
 ## Not yet done
 
 - v3.4 calibration results for Muse Spark 1.3, v3.3 results for Grok 4.6,
