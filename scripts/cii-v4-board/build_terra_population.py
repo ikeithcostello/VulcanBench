@@ -85,7 +85,9 @@ def main() -> None:
                 )
             for task in TASK_IDS:
                 if task not in seen:
-                    missing.append({"model": model, "effort": level, "task": task, "reason": MISSING_REASON})
+                    missing.append(
+                        {"model": model, "effort": level, "task": task, "reason": MISSING_REASON}
+                    )
     cells = {}
     for r in rows:
         cells.setdefault(f"{r['model']}/{r['effort']}", 0)

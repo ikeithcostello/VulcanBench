@@ -42,7 +42,9 @@ from harness import retrospective_judging as base
 # its population and directories rebound, so the wrapper must look those up on
 # the module at call time rather than importing them by value.
 MODULE = os.environ.get("VB_MAINT_MODULE", "harness.maintenance_review_v3")
-importlib.import_module(MODULE)  # a later protocol module rebinds the frozen v3 implementation on import
+importlib.import_module(
+    MODULE
+)  # a later protocol module rebinds the frozen v3 implementation on import
 # The helpers (read, validate, excerpt_supported, ...) live on the frozen
 # implementation, and so do the rebound OUT and population constants.
 v3 = importlib.import_module("harness.maintenance_review_v3")
