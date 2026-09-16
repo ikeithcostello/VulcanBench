@@ -21,6 +21,11 @@ the relevant entry before changing budgets, concurrency, or sweep launchers,
 and add an entry when a decision like that is made. Current: v4 tasks carry
 a flat 3-hour timeout; sweeps run one task at a time.
 
+Operator settings live in [vulcanbench.toml](vulcanbench.toml). Effort levels
+listed under `[effort].blocked` (currently "ultra") never run on any model,
+harness or suite; the harness refuses them before a model call. Do not work
+around the block or add an ultra column anywhere.
+
 ## Brand: logo and typography
 
 Use these whenever producing anything user-facing or shareable (charts, reports,
