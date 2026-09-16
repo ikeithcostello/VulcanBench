@@ -66,6 +66,22 @@ def load():
         )
         receipt = run.get("solver_receipt") or {}
         require(type(receipt.get("raw_tokens")) is int, f"no raw token receipt for {run['run_id']}")
+        # The frozen population record carried the costs the sweep stamped at run
+        # time, which for Terra used a stale list price. The run summaries were
+        # re-priced on 2026-09-16 (originals kept under "repriced"); the card
+        # takes the re-priced value and checks it against the receipt at the
+        # published rates.
+        live = json.loads((Path(run["source_directory"]) / "summary.json").read_text())
+        usage = receipt["usage"]
+        cached = min(usage["cached_input_tokens"], usage["input_tokens"])
+        expected = (
+            (usage["input_tokens"] - cached) * 2.00 + cached * 0.20 + usage["output_tokens"] * 12.00
+        ) / 1e6
+        cost = {"api_equivalent_cost_usd": live["economics"]["api_equivalent_cost_usd"]}
+        require(
+            abs(cost["api_equivalent_cost_usd"] - expected) < 1e-5,
+            f"price drift on {run['run_id']}",
+        )
         rows.append(
             {
                 "run_id": run["run_id"],
@@ -89,6 +105,8 @@ def load():
             "cached rate ($0.20 per million for Terra against $2.00 uncached, $12.00 output).",
             "Standard tier, short-context rates; no long-context premium is inferred.",
             "Estimates cover exposed receipts, not an independently observed API invoice.",
+            "The frozen population record carries the sweep's run-time stamps at a stale Terra list price; the run "
+            "summaries were re-priced at the 2026-09-11 list on 2026-09-16 and the card uses the re-priced values.",
         ],
     }
     return ledger, rows
