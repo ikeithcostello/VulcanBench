@@ -1,0 +1,168 @@
+{
+  "population": "runs-code-quality-maintenance-v3.6 summary, 114 runs",
+  "ledger": "comparison.json",
+  "ledger_sha256": "5834b8e04f2cf92bc8bea24858ab3e6cb96fd58019d3cc7bfbc3a3891f5ff2d9",
+  "pricing_verified": "2026-09-11",
+  "sources": {
+    "openai": "https://developers.openai.com/api/docs/pricing"
+  },
+  "totals": {
+    "terra": {
+      "usd": 161.625259,
+      "usd_upper": 161.625259,
+      "tokens": 353739762,
+      "hours": 24.598443888888887,
+      "runs": 114
+    }
+  },
+  "groups": {
+    "terra/low": {
+      "model": "terra",
+      "effort": "low",
+      "n": 23,
+      "usd": {
+        "n": 23,
+        "mean": 0.6644393478260869,
+        "se": 0.045285030743515475
+      },
+      "usd_upper": {
+        "n": 23,
+        "mean": 0.6644393478260869,
+        "se": 0.045285030743515475
+      },
+      "usd_total": 15.282105,
+      "tokens": {
+        "n": 23,
+        "mean": 1.2121775652173914,
+        "se": 0.10849571563717998
+      },
+      "tokens_total": 27880084,
+      "minutes": {
+        "n": 23,
+        "mean": 6.673165217391304,
+        "se": 0.3917252333498973
+      },
+      "fallbacks": 0
+    },
+    "terra/medium": {
+      "model": "terra",
+      "effort": "medium",
+      "n": 23,
+      "usd": {
+        "n": 23,
+        "mean": 0.7906343043478261,
+        "se": 0.042645626622265405
+      },
+      "usd_upper": {
+        "n": 23,
+        "mean": 0.7906343043478261,
+        "se": 0.042645626622265405
+      },
+      "usd_total": 18.184589,
+      "tokens": {
+        "n": 23,
+        "mean": 1.4508437826086957,
+        "se": 0.11027555451748212
+      },
+      "tokens_total": 33369407,
+      "minutes": {
+        "n": 23,
+        "mean": 7.875719565217391,
+        "se": 0.41981658234059566
+      },
+      "fallbacks": 0
+    },
+    "terra/high": {
+      "model": "terra",
+      "effort": "high",
+      "n": 23,
+      "usd": {
+        "n": 23,
+        "mean": 1.3438694347826088,
+        "se": 0.14305399546189532
+      },
+      "usd_upper": {
+        "n": 23,
+        "mean": 1.3438694347826088,
+        "se": 0.14305399546189532
+      },
+      "usd_total": 30.908997,
+      "tokens": {
+        "n": 23,
+        "mean": 2.8605712173913043,
+        "se": 0.4319108986347876
+      },
+      "tokens_total": 65793138,
+      "minutes": {
+        "n": 23,
+        "mean": 12.589148550724637,
+        "se": 0.992314585833726
+      },
+      "fallbacks": 0
+    },
+    "terra/extra-high": {
+      "model": "terra",
+      "effort": "extra-high",
+      "n": 23,
+      "usd": {
+        "n": 23,
+        "mean": 2.3659891739130434,
+        "se": 0.6364883646510381
+      },
+      "usd_upper": {
+        "n": 23,
+        "mean": 2.3659891739130434,
+        "se": 0.6364883646510381
+      },
+      "usd_total": 54.417751,
+      "tokens": {
+        "n": 23,
+        "mean": 5.8555590869565215,
+        "se": 1.9790860768579113
+      },
+      "tokens_total": 134677859,
+      "minutes": {
+        "n": 23,
+        "mean": 19.239158695652176,
+        "se": 4.118069822370688
+      },
+      "fallbacks": 0
+    },
+    "terra/max": {
+      "model": "terra",
+      "effort": "max",
+      "n": 22,
+      "usd": {
+        "n": 22,
+        "mean": 1.9469007727272727,
+        "se": 0.33775950353220907
+      },
+      "usd_upper": {
+        "n": 22,
+        "mean": 1.9469007727272727,
+        "se": 0.33775950353220907
+      },
+      "usd_total": 42.831817,
+      "tokens": {
+        "n": 22,
+        "mean": 4.1826942727272725,
+        "se": 1.0523474174441978
+      },
+      "tokens_total": 92019274,
+      "minutes": {
+        "n": 22,
+        "mean": 18.601418939393938,
+        "se": 2.041039049263792
+      },
+      "fallbacks": 0
+    }
+  },
+  "limitations": [
+    "Codex receipts report cumulative input, cached input and output per run; cached input is priced at the cached rate ($0.20 per million for Terra against $2.00 uncached, $12.00 output).",
+    "Standard tier, short-context rates; no long-context premium is inferred.",
+    "Estimates cover exposed receipts, not an independently observed API invoice."
+  ],
+  "summary_sha256": "e3ddd51feb26ec3a0808c83d7461ff041a05b9d72dad8f156030c9dc399e050f",
+  "png_sha256": "9de8a6c204efabcd59934ae6dfd66d313b53239ead3f501929d6637d344f0a29",
+  "supporting_table": "terra-v36-economics-efforts.csv"
+}
