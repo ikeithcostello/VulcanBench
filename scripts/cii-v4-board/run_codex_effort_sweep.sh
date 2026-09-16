@@ -21,6 +21,15 @@ QUOTA_WAIT=${QUOTA_WAIT:-1800}
 RETRY_WAIT=${RETRY_WAIT:-120}
 MAX_ATTEMPTS=${MAX_ATTEMPTS:-40}
 
+# vulcanbench.toml [effort].blocked: levels that never run. The harness refuses
+# them too; checking here keeps a mistyped LEVELS from even starting a loop.
+for level in $LEVELS; do
+  if python3 -c 'import sys, tomllib; blocked = tomllib.load(open("vulcanbench.toml", "rb")).get("effort", {}).get("blocked", []); sys.exit(0 if sys.argv[1] in blocked else 1)' "$level"; then
+    echo "refusing to start: effort '$level' is blocked by vulcanbench.toml" >&2
+    exit 5
+  fi
+done
+
 if pgrep -f "vulcanbench run --suite $SUITE" >/dev/null 2>&1; then
   echo "refusing to start: a vulcanbench run is already active (pgrep -fl 'vulcanbench run')" >&2
   exit 1

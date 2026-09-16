@@ -56,6 +56,7 @@ from harness.sandbox.docker_executor import (
     _docker_available,
 )
 from harness.sandbox.images import resolve_sandbox_image
+from harness.settings import check_effort_allowed
 from harness.task_metadata import (
     measure_repo_path,
     repo_scale,
@@ -172,6 +173,7 @@ def run_agent(  # noqa: PLR0915
     own cost crosses it, and the summary records ``cost_capped``. Returns a
     summary dict (also persisted to ``<run_dir>/summary.json``).
     """
+    check_effort_allowed(effort)  # vulcanbench.toml: levels that never run, checked before anything
     task = load_task(task_id, tasks_root)
     cli_adapter, provider, effort_meta = _resolve_run_engine(
         model, provider, effort, sandbox, agent_container

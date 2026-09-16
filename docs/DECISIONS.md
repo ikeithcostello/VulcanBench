@@ -7,6 +7,40 @@ changing run conditions. Suite-level policy for v4 lives in
 [tasks/coding-intelligence-index-v4/CHARTER.md](../tasks/coding-intelligence-index-v4/CHARTER.md);
 entries here record the measurements behind those rules.
 
+## 2026-09-16: the "ultra" effort level never runs
+
+### Decision
+
+No VulcanBench benchmark runs at effort "ultra", for any model, harness or
+suite. The block lives in `vulcanbench.toml` (`[effort].blocked`) and is
+enforced before any model call by `harness/settings.py` at every entry point:
+`vulcanbench run`, `vulcanbench effort-sweep`, `run_agent` (which every sweep
+driver calls), and the Codex effort launcher. A blocked level is refused with
+an error naming the file. Owner decision, in chat, 2026-09-16.
+
+### Evidence
+
+- The Codex model catalogue lists "ultra" for GPT-5.6 Terra only, above max;
+  GPT-5.5 stops at xhigh and Luna at max. The board publishes Low to Max, so
+  an ultra column would compare against nothing.
+- Muse Code's "ultra" is a client-side mode mapped onto the provider's
+  highest supported tier, not a distinct API effort (recorded in the Muse
+  Contributor sweep protocol), so it does not measure a new level either.
+- A settings file rather than a code constant so the rule survives new
+  adapters and catalogue changes without anyone remembering it.
+
+### What this touched
+
+- `vulcanbench.toml` (new), `harness/settings.py` (new), `harness/agent/loop.py`,
+  `harness/cli.py`, `scripts/cii-v4-board/run_codex_effort_sweep.sh`,
+  `tests/test_settings.py`.
+- Not touched: `harness/effort.py` and `harness/agent/muse_code.py` still know
+  the word so recorded runs and protocol hashes stay valid; the running Muse
+  Contributor sweep pins both files. That sweep's protocol lists ultra as its
+  final level; under this block it will stop with a refusal before that level
+  rather than run it, and its protocol should be amended to drop ultra at its
+  next stop.
+
 ## 2026-09-13: v4 task timeout lowered to 3 hours; concurrency stays at 1
 
 ### Decision
