@@ -35,6 +35,7 @@ from harness.pricing import is_priced
 from harness.regrade import find_run_dirs, regrade_run
 from harness.report import build_report, to_markdown
 from harness.sandbox.docker_executor import ResourceSpec, SandboxError
+from harness.settings import BlockedEffortError, check_effort_allowed
 from harness.suite import SUITE_ALIASES, load_suite, run_suite
 from harness.tasks import list_task_ids
 from harness.validate import main as validate_main
@@ -289,7 +290,8 @@ def run(  # noqa: PLR0912, PLR0915, CLI entry: option declarations + linear guar
     effort: str | None = typer.Option(
         None,
         "--effort",
-        help="Normalized reasoning effort: low|medium|high|extra-high|max",
+        help="Normalized reasoning effort: low|medium|high|extra-high|max "
+        "(levels under [effort].blocked in vulcanbench.toml are refused)",
     ),
     dry_run: bool = typer.Option(False, "--dry-run", help="Plan only, do not launch sandbox"),
     use_priors: bool = typer.Option(
@@ -299,6 +301,11 @@ def run(  # noqa: PLR0912, PLR0915, CLI entry: option declarations + linear guar
     ),
 ) -> None:
     """Run an agent against a task or a whole suite, recording full traces."""
+    try:
+        check_effort_allowed(effort)
+    except BlockedEffortError as exc:
+        console.print(f"[red]error[/red] {exc}")
+        raise typer.Exit(code=1) from exc
     try:
         model = _execution_spec(model, harness_name, billing)
     except ValueError as exc:
@@ -753,6 +760,8 @@ def effort_sweep(  # noqa: PLR0912, PLR0915, CLI entry: validation + per-effort 
     """Run a suite across normalized reasoning-effort levels."""
     try:
         effort_list = parse_efforts(efforts)
+        for level in effort_list:
+            check_effort_allowed(level)
     except ValueError as e:
         console.print(f"[red]error[/red] {e}")
         raise typer.Exit(code=1) from e
