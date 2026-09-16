@@ -209,3 +209,32 @@ operational notes live here.
   Summary written: 207 of 207 published, ten L2 redistributions (nine Luna
   low, one Luna medium, each a submission that passed no quirk family), no
   fallbacks, both panels passing.
+
+## v3.6, September 15 to 16, 2026: GPT-5.6 Terra
+
+- Population frozen September 15, 19:25 PDT: 114 rows, no exclusions, one
+  missing (paddockcore at max, refused by the Codex API's usage limit until
+  September 19; one refused attempt kept under
+  `runs-effort-terra/max-quota-refused/`). Judged on the owner's decision to
+  publish max at 22 and top up later.
+- Both judges retook the calibration exam under v3.6. Grok 4.6 passed every
+  gate. Muse Spark 1.3 passed on the pre-registered allowance: gate 11
+  (repeatability) short by 0.02 on one control, as under v3.5.
+- Muse, primary submission-112 (22:10 PDT): both attempts failed on
+  "Unsupported evidence excerpt"; the wrapper's excerpt recovery crashed
+  because, when driving a later protocol module, it looked up read and the
+  validators on that module instead of the frozen v3 implementation. The
+  wrapper was fixed (helpers taken from the v3 module, which also holds the
+  rebound directories; PR #119), the chain relaunched from the review stage,
+  and the recovery applied under the existing re-wrap rule (one excerpt on
+  presentation).
+- Grok: two Cursor DNS transport faults (`getaddrinfo ENOTFOUND
+  api2.cursor.sh`), both on match calls, both retried under the
+  retry_network_fault rule without stopping.
+- Second attempts under the existing rules: Muse six (four primary, one
+  repeat, one probe, all unsupported excerpts); Grok eight (five unsupported
+  excerpts on primaries, one match that cited an unlisted departure, the two
+  transport faults). Neither judge produced a reviewer fallback.
+- September 16, 09:36 PDT: both passes complete. Summary written: 114 of
+  114 published, two L2 redistributions (granarycore at low, schedcore at
+  high), both panels passing.
