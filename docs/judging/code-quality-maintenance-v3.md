@@ -579,6 +579,32 @@ as a library and replaces only the population freeze, as v3.5 does.
   document, v3.5 would be re-run from a git worktree pinned at its freeze
   commit, as v3.2 to v3.4 are.
 
+## Amendment v3.6.1, September 17, 2026: the Terra top-up
+
+Protocol id `code-quality-maintenance-v3.6.1`; run directory
+`runs-code-quality-maintenance-v3.6.1`; runner
+`harness/maintenance_review_v361.py`, derived from the v3.6 runner.
+
+- Population: only the runs the v3.6 protocol recorded as missing, once
+  they exist. The v3.6.1 freeze refuses any run already judged under v3.6
+  and any run not on the v3.6 missing list, and checks that each cell's new
+  rows plus its v3.6 rows plus any remaining gaps make 23.
+- Calibration: both judges' v3.6 verdicts gate the top-up. The exam is per
+  population and the top-up belongs to the v3.6 population; no new
+  calibration calls are made. The v3.6.1 protocol record carries the hashes
+  of the v3.6 protocol, summary, manifest and both calibration files, and
+  the runner's gate checks the v3.6 verdict against the frozen v3.6
+  protocol rather than against its own.
+- Diagnostics: each top-up submission is reviewed twice (primary and
+  repeat); there are no pairwise checks.
+- The run itself: paddockcore at max, made on September 17 after the owner
+  switched the Codex CLI to a second ChatGPT account (Pro plan) so the
+  quota window did not have to be waited out. Same CLI version, same
+  harness, same task hash; the account is the only change and is recorded
+  here and in the population record.
+- Publication merges the v3.6 and v3.6.1 directories; the v3.6 record is
+  not rewritten. Aggregates for the max cell are recomputed over all 23.
+
 ## Not yet done
 
 - v3.4 calibration results for Muse Spark 1.3, v3.3 results for Grok 4.6,
