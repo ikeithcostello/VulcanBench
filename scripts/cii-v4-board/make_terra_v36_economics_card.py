@@ -71,6 +71,9 @@ def load():
         EXPECTED.pop("terra/max", None)
     record = json.loads(LEDGER.read_text())
     priced = {r["run_id"]: r for r in record["rows"]}
+    topup_ledger = LEDGER.with_name("comparison-topup.json")
+    if topup_ledger.exists():
+        priced.update({r["run_id"]: r for r in json.loads(topup_ledger.read_text())["rows"]})
     require(summary["ready_for_publication"], "v3.6 summary is not final")
     rows = []
     for entry in summary["rows"]:
