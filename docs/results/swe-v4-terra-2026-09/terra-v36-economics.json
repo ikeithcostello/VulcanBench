@@ -1,5 +1,5 @@
 {
-  "population": "runs-code-quality-maintenance-v3.6 summary, 114 runs",
+  "population": "runs-code-quality-maintenance-v3.6 summary plus the v3.6.1 top-up, 115 runs",
   "ledger": "comparison.json",
   "ledger_sha256": "5834b8e04f2cf92bc8bea24858ab3e6cb96fd58019d3cc7bfbc3a3891f5ff2d9",
   "pricing_verified": "2026-09-11",
@@ -8,11 +8,11 @@
   },
   "totals": {
     "terra": {
-      "usd": 142.730044,
-      "usd_upper": 142.730044,
-      "tokens": 353739762,
-      "hours": 24.598443888888887,
-      "runs": 114
+      "usd": 148.256714,
+      "usd_upper": 148.256714,
+      "tokens": 369418090,
+      "hours": 25.343045277777776,
+      "runs": 115
     }
   },
   "groups": {
@@ -131,28 +131,28 @@
     "terra/max": {
       "model": "terra",
       "effort": "max",
-      "n": 22,
+      "n": 23,
       "usd": {
-        "n": 22,
-        "mean": 1.7165422727272728,
-        "se": 0.31100768999859935
+        "n": 23,
+        "mean": 1.8822,
+        "se": 0.3402312862899848
       },
       "usd_upper": {
-        "n": 22,
-        "mean": 1.7165422727272728,
-        "se": 0.31100768999859935
+        "n": 23,
+        "mean": 1.8822,
+        "se": 0.3402312862899848
       },
-      "usd_total": 37.76393,
+      "usd_total": 43.2906,
       "tokens": {
-        "n": 22,
-        "mean": 4.1826942727272725,
-        "se": 1.0523474174441978
+        "n": 23,
+        "mean": 4.682504434782609,
+        "se": 1.1229187779522323
       },
-      "tokens_total": 92019274,
+      "tokens_total": 107697602,
       "minutes": {
-        "n": 22,
-        "mean": 18.601418939393938,
-        "se": 2.041039049263792
+        "n": 23,
+        "mean": 19.7351,
+        "se": 2.255842671029675
       },
       "fallbacks": 0
     }
@@ -164,6 +164,6 @@
     "The frozen population record carries the sweep's run-time stamps at a stale Terra list price; the run summaries were re-priced at the 2026-09-11 list on 2026-09-16 and the card uses the re-priced values."
   ],
   "summary_sha256": "e3ddd51feb26ec3a0808c83d7461ff041a05b9d72dad8f156030c9dc399e050f",
-  "png_sha256": "586294b967cec175c660f91f345eb78c1995563d7efc25971e662b35a37f0bfe",
+  "png_sha256": "e5f2e424253ae5611cca3040ddfeb423375872593bf39dbc292315a330d97b5a",
   "supporting_table": "terra-v36-economics-efforts.csv"
 }

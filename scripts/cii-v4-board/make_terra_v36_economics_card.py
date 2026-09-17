@@ -27,6 +27,7 @@ sys.path.insert(0, str(ROOT))
 from harness.retrospective_judging import LEVELS, digest, save  # noqa: E402
 
 RUN = ROOT / "runs-code-quality-maintenance-v3.6"
+TOPUP = ROOT / "runs-code-quality-maintenance-v3.6.1"  # v3.6.1: the run v3.6 recorded missing
 OUTPUT = ROOT / "docs/results/swe-v4-terra-2026-09"
 LEDGER = OUTPUT / "comparison.json"
 PAPER, INK, RULE, MUTED = "#f7f5f0", "#171917", "#c6c5bc", "#6b6b66"
@@ -54,8 +55,25 @@ def mean_se(values):
 def load():
     summary = json.loads((RUN / "summary.json").read_text())
     manifest = {r["id"]: r for r in json.loads((RUN / "private-manifest.json").read_text())}
+    topup_summary = (TOPUP / "summary.json").exists() and json.loads(
+        (TOPUP / "summary.json").read_text()
+    )
+    if topup_summary and topup_summary.get("ready_for_publication"):
+        require(
+            topup_summary["protocol"] == "code-quality-maintenance-v3.6.1", "wrong top-up protocol"
+        )
+        require(set(topup_summary["passing_panels"]) == {"muse", "grok"}, "top-up panels")
+        for r in json.loads((TOPUP / "private-manifest.json").read_text()):
+            manifest["topup:" + r["id"]] = r
+        summary["rows"] = summary["rows"] + [
+            {**r, "id": "topup:" + r["id"]} for r in topup_summary["rows"]
+        ]
+        EXPECTED.pop("terra/max", None)
     record = json.loads(LEDGER.read_text())
     priced = {r["run_id"]: r for r in record["rows"]}
+    topup_ledger = LEDGER.with_name("comparison-topup.json")
+    if topup_ledger.exists():
+        priced.update({r["run_id"]: r for r in json.loads(topup_ledger.read_text())["rows"]})
     require(summary["ready_for_publication"], "v3.6 summary is not final")
     rows = []
     for entry in summary["rows"]:
@@ -95,7 +113,7 @@ def load():
                 "minutes": run["duration_s"] / 60,
             }
         )
-    require(len(rows) == 114, f"{len(rows)} priced rows")
+    require(len(rows) in (114, 115), f"{len(rows)} priced rows")
     ledger = {
         "pricing_verified": "2026-09-11",
         "sources": {"openai": "https://developers.openai.com/api/docs/pricing"},
@@ -236,7 +254,14 @@ def main():  # noqa: PLR0915, one linear figure
             )
         )
         text(x + 0.018, 2.68, f"{NAMES[model]}  ·  {HARNESS[model]}", 15, True)
-    text(right, 2.68, "n=23 at every effort, n=22 at max", 13, ha="right", color=MUTED)
+    text(
+        right,
+        2.68,
+        "n=23 at every effort" if not EXPECTED else "n=23 at every effort, n=22 at max",
+        13,
+        ha="right",
+        color=MUTED,
+    )
 
     chart_top, chart_h = 3.75, 2.7
     for panel, (x0, w) in (("usd", (0.085, 0.405)), ("tokens", (0.565, 0.39))):
@@ -360,8 +385,12 @@ def main():  # noqa: PLR0915, one linear figure
     notes = [
         f"USD at list prices checked {ledger['pricing_verified']}, cache-aware (Terra \\$2.00 input, \\$0.20 cached input, \\$12.00 output per million), "
         "solver inference only; subscription bills differ.",
-        "Max has 22 runs: paddockcore never started because the Codex subscription quota window closed until September 19; "
-        "it will be judged as a top-up.",
+        (
+            "Max has 22 runs: paddockcore never started because the Codex subscription quota window closed; it is judged as a top-up."
+            if len(rows) == 114
+            else "Paddockcore at max ran on September 17 on a second ChatGPT account after the first hit its quota window; "
+            "it is judged under the v3.6.1 top-up with the same judges and calibration."
+        ),
         "Whiskers are one task standard error. Tokens are raw solver totals including cache reads.",
     ]
     for i, note in enumerate(notes):
@@ -410,7 +439,7 @@ def main():  # noqa: PLR0915, one linear figure
     save(
         out.with_suffix(".json"),
         {
-            "population": "runs-code-quality-maintenance-v3.6 summary, 114 runs",
+            "population": f"runs-code-quality-maintenance-v3.6 summary plus the v3.6.1 top-up, {len(rows)} runs",
             "ledger": LEDGER.name,
             "ledger_sha256": digest(LEDGER.read_bytes()),
             "pricing_verified": ledger["pricing_verified"],
