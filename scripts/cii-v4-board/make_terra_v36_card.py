@@ -38,6 +38,7 @@ from harness.evaluator.reviewed_score import WEIGHTS_V3  # noqa: E402
 from harness.retrospective_judging import LEVELS, digest, save  # noqa: E402
 
 RUN = ROOT / "runs-code-quality-maintenance-v3.6"
+TOPUP = ROOT / "runs-code-quality-maintenance-v3.6.1"  # v3.6.1: the run v3.6 recorded missing
 OUTPUT = ROOT / "docs/results/swe-v4-terra-2026-09"
 PAPER, INK, RULE, MUTED = "#f7f5f0", "#171917", "#c6c5bc", "#6b6b66"
 COLORS = {"terra": "#10A37F"}
@@ -96,6 +97,20 @@ def composite(run, quality, weight):
 def load():
     summary = json.loads((RUN / "summary.json").read_text())
     manifest = {r["id"]: r for r in json.loads((RUN / "private-manifest.json").read_text())}
+    topup_summary = (TOPUP / "summary.json").exists() and json.loads(
+        (TOPUP / "summary.json").read_text()
+    )
+    if topup_summary and topup_summary.get("ready_for_publication"):
+        require(
+            topup_summary["protocol"] == "code-quality-maintenance-v3.6.1", "wrong top-up protocol"
+        )
+        require(set(topup_summary["passing_panels"]) == set(PANELS), "top-up panels")
+        for r in json.loads((TOPUP / "private-manifest.json").read_text()):
+            manifest["topup:" + r["id"]] = r
+        summary["rows"] = summary["rows"] + [
+            {**r, "id": "topup:" + r["id"]} for r in topup_summary["rows"]
+        ]
+        EXPECTED.pop("terra/max", None)
     protocol = json.loads((RUN / "protocol.json").read_text())
     require(summary["protocol"] == "code-quality-maintenance-v3.6", "wrong protocol")
     require(
@@ -280,7 +295,7 @@ def main():  # noqa: PLR0912, PLR0915, one linear figure
     text(
         left,
         2.22,
-        "Combined score and runtime at every effort level. 23 tasks per effort, 22 at max. "
+        "Combined score and runtime at every effort level, 23 tasks per effort. "
         "Code quality judged by Muse Spark 1.3 and Grok 4.6.",
         15,
         color=MUTED,
@@ -303,7 +318,14 @@ def main():  # noqa: PLR0912, PLR0915, one linear figure
             )
         )
         text(x + 0.018, 2.68, f"{NAMES[model]}  ·  {HARNESS[model]}", 15, True)
-    text(right, 2.68, "n=23 at every effort, n=22 at max", 13, ha="right", color=MUTED)
+    text(
+        right,
+        2.68,
+        "n=23 at every effort" if not EXPECTED else "n=23 at every effort, n=22 at max",
+        13,
+        ha="right",
+        color=MUTED,
+    )
 
     # Charts: combined score by effort (lines) and runtime by effort (bars)
     chart_top, chart_h = 3.75, 3.0
