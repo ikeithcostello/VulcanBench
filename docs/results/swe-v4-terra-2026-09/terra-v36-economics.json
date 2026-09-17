@@ -1,5 +1,5 @@
 {
-  "population": "runs-code-quality-maintenance-v3.6 summary, 114 runs",
+  "population": "runs-code-quality-maintenance-v3.6 summary plus the v3.6.1 top-up, 114 runs",
   "ledger": "comparison.json",
   "ledger_sha256": "5834b8e04f2cf92bc8bea24858ab3e6cb96fd58019d3cc7bfbc3a3891f5ff2d9",
   "pricing_verified": "2026-09-11",
@@ -164,6 +164,6 @@
     "The frozen population record carries the sweep's run-time stamps at a stale Terra list price; the run summaries were re-priced at the 2026-09-11 list on 2026-09-16 and the card uses the re-priced values."
   ],
   "summary_sha256": "e3ddd51feb26ec3a0808c83d7461ff041a05b9d72dad8f156030c9dc399e050f",
-  "png_sha256": "586294b967cec175c660f91f345eb78c1995563d7efc25971e662b35a37f0bfe",
+  "png_sha256": "b4b710db0b954968924c9631cdae1f11793895332c564728fc63a2d728816aa6",
   "supporting_table": "terra-v36-economics-efforts.csv"
 }
