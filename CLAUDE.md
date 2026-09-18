@@ -18,7 +18,9 @@ Keep headings plain (no decorative dashes around them) on shareable assets.
 The public name of `tasks/coding-intelligence-index-v4` is **VulcanBench
 Frontier v4** (renamed from VulcanBench-SWE v4 on 2026-09-18; URL slugs,
 file names and run directories keep `swe-v4` and are never renamed). Its
-private routine companion is VulcanBench Routine v1. Use the public names in
+private routine companion is VulcanBench Routine v1, and the private conduct
+suite in the VulcanConduct repo (suite id `conduct-v1`) is VulcanBench Safety v1
+(renamed from VulcanConduct v1 on 2026-09-18). Use the public names in
 anything user-facing; never write "SWE v4" for new material.
 
 ## Operating decisions
