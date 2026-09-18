@@ -63,6 +63,13 @@ def result_summary(result):
     summary = result["summary"]
     assert result["run_id"] == summary["run_id"]
     scores = summary["scores"]
+    details = scores.get("metric_details") or {}
+    no_source = (details.get("quality") or {}).get("reason") == "no recognized source files changed"
+    if no_source and scores["functional"] == 0.0:
+        # The harness scores a run whose patch touches no recognized source
+        # file as functional 0.0 and skips the analyzers. That is a scored
+        # failure, not a grading gap.
+        return summary
     if scores.get("budget_exceeded"):
         # The harness scores a run that exhausts its wall-clock budget as a
         # failure (functional 0.0) and skips the quality and security
@@ -169,6 +176,13 @@ def main():
                 "state_at_amendment": "minimal: 23/23 complete under 10 h; low: 17/23 complete under 10 h; remaining 6 low tasks and medium through ultra run under 3 h",
                 "solver_conditions_changed": True,
                 "comparability_note": "Under a 3 h cap, 6 minimal runs (tallycore, granarycore, depotcore, lodgecore, cellarcore, paddockcore) and 1 low run (tallycore) would have scored 0; four of them scored 0.43 to 0.64 and low tallycore 0.875 as recorded. Minimal mean 0.717 as scored versus 0.620 if capped; low-so-far 0.842 versus 0.791",
+            },
+            {
+                "at": "2026-09-18T06:10:00+00:00",
+                "change": "Sweep driver accepts harness summaries whose patch changed no recognized source file (functional 0.0, analyzers skipped) as scored failures instead of pausing",
+                "reason": "paddockcore (high) finished inside its budget but its patch contained only probe text files; the harness scored it 0/15 and skipped quality and security by design",
+                "state_at_amendment": "minimal, low, medium complete; high 22/23 complete plus paddockcore scored 0; extra-high and ultra not started",
+                "solver_conditions_changed": False,
             },
         ],
         "boundary": "Kernel-denied checkout/prior agent sessions/shared temp artifacts; isolated writes and explicit TMPDIR guidance; web tools disabled; shell network not isolated",
