@@ -161,7 +161,7 @@
       "protocol": "72f79a5afb5a3b5a413c08c57cbeaff8195d944e7f12e7147f70b50e988fc49a"
     }
   },
-  "png_sha256": "b69016e648d6dd5ed3a39163e006cb554cdcbf9d305ff3954873c600945ea2e0",
+  "png_sha256": "225d082efc1ae1119be774b467778c117b702827f4c8aab20bfb95a7bae4a5ce",
   "supporting_table": "terra-vs-luna-efforts.csv",
   "visual_qa": "Requires visual inspection after rendering"
 }
