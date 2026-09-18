@@ -184,6 +184,13 @@ def main():
                 "state_at_amendment": "minimal, low, medium complete; high 22/23 complete plus paddockcore scored 0; extra-high and ultra not started",
                 "solver_conditions_changed": False,
             },
+            {
+                "at": "2026-09-18T16:30:00+00:00",
+                "change": "Re-pinned harness/effort.py to the working-tree version carrying an in-progress Devin CLI effort map (uncommitted work by another session on branch frontier-rename)",
+                "reason": "The added _DEVIN_EFFORT_VALUES table and its registry entry do not touch the muse-code effort map; the Muse tests pass against the tree",
+                "state_at_amendment": "extra-high 21/23 complete; ultra not started",
+                "solver_conditions_changed": False,
+            },
         ],
         "boundary": "Kernel-denied checkout/prior agent sessions/shared temp artifacts; isolated writes and explicit TMPDIR guidance; web tools disabled; shell network not isolated",
         "source_hashes": {
