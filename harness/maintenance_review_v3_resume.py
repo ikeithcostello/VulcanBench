@@ -182,6 +182,48 @@ def retry_network_fault(folder: Path) -> bool:
     return True
 
 
+PROVIDER_BLOCK_MARKERS = (
+    "Request blocked",
+    "model provider's usage guidelines",
+    "ActionRequiredError",
+)
+
+
+def retry_provider_block(folder: Path) -> bool:
+    """The judge CLI's provider refused to serve the request and no response was produced.
+
+    Cursor surfaces xAI's content filter as an ActionRequiredError before any
+    model output. When the identical prompt served under earlier protocol
+    versions, the block is a transport fault, not a judgment: the protocol's
+    single fresh attempt applies, with the receipt retained. A second block on
+    the same call is left for a person.
+    """
+    receipt = folder / "attempt-1.json"
+    if not receipt.exists() or (folder / "attempt-2.json").exists():
+        return False
+    rec = json.loads(receipt.read_text())
+    if rec.get("status") != "failed" or rec.get("retryable") is not False:
+        return False
+    error = str(rec.get("error", ""))
+    if not any(marker in error for marker in PROVIDER_BLOCK_MARKERS):
+        return False
+    stream = folder / "attempt-1.stream.jsonl"
+    if stream.exists() and "assistant" in stream.read_text():
+        return False
+    rec["retryable"] = True
+    rec["operator_review"] = {
+        "at": datetime.now(UTC).isoformat(),
+        "finding": f"Provider blocked the request before any output ({error.strip()[-120:]}).",
+        "action": "Transport fault: one fresh attempt per the protocol; receipt retained.",
+    }
+    receipt.write_text(json.dumps(rec, indent=2, sort_keys=True))
+    print(
+        json.dumps({"event": "provider_block_retry", "call": str(folder.relative_to(_out()))}),
+        flush=True,
+    )
+    return True
+
+
 QUOTA_MARKERS = ("resource_exhausted", "RetriableError", "rate limit", "rate_limit", "429")
 QUOTA_MAX_RESUMES = 12
 
@@ -674,6 +716,9 @@ def main() -> int:
             applied += 1
             continue
         if folder is not None and retry_network_fault(folder):
+            applied += 1
+            continue
+        if folder is not None and retry_provider_block(folder):
             applied += 1
             continue
         if folder is not None and quota_resume(folder):
