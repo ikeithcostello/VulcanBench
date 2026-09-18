@@ -35,7 +35,7 @@
   },
   "summary_sha256": "e3ddd51feb26ec3a0808c83d7461ff041a05b9d72dad8f156030c9dc399e050f",
   "protocol_sha256": "f6214c5c99d75e61a5803811700cec86ddbcd3c0ef727d1af5d276c2998ac486",
-  "png_sha256": "e77a9913e323abde77e37dc2619847d52f877739e995366c5e187825b2da76f3",
+  "png_sha256": "d93c3e582a331b8ecbdfea6224e09a26238c7a59bdc2beb256a280716f56f6be",
   "supporting_table": "terra-v36-efforts.csv",
   "visual_qa": "Requires visual inspection after rendering"
 }

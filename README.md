@@ -69,7 +69,7 @@ reason when its analyzer is unavailable; a score is never fabricated.
 
 The harness total re-normalizes over whichever metrics are present
 ([harness/evaluator/scorer.py](harness/evaluator/scorer.py)). Published
-VulcanBench-SWE v4 reports use a fixed combined score instead:
+VulcanBench Frontier v4 reports use a fixed combined score instead:
 
 ```
 combined = 100 * (0.50 functional + 0.085 lint_and_complexity + 0.085 security + 0.33 code_quality)
@@ -151,7 +151,7 @@ verified CLI versions and boundaries: [docs/HARNESS_BENCHMARKING.md](docs/HARNES
 
 | Suite | `--suite` | What it holds |
 |---|---|---|
-| VulcanBench-SWE v4 | `cii-v4` ([tasks/coding-intelligence-index-v4](tasks/coding-intelligence-index-v4/)) | 23 behavioural-reconstruction tasks. Each ships a retired compiled binary whose real behaviour departs from its written spec in documented ways, a naive rewrite made from the spec, and hidden tests captured from the binary. The agent must characterise the black box and make the rewrite match it. Every task passes a frontier admission gate ([CHARTER.md](tasks/coding-intelligence-index-v4/CHARTER.md)) and its verdict is logged in [CANDIDATES.md](tasks/coding-intelligence-index-v4/CANDIDATES.md). |
+| VulcanBench Frontier v4 | `cii-v4` ([tasks/coding-intelligence-index-v4](tasks/coding-intelligence-index-v4/)) | 23 behavioural-reconstruction tasks. Each ships a retired compiled binary whose real behaviour departs from its written spec in documented ways, a naive rewrite made from the spec, and hidden tests captured from the binary. The agent must characterise the black box and make the rewrite match it. Every task passes a frontier admission gate ([CHARTER.md](tasks/coding-intelligence-index-v4/CHARTER.md)) and its verdict is logged in [CANDIDATES.md](tasks/coding-intelligence-index-v4/CANDIDATES.md). |
 | Coding Intelligence Index v1 | `cii-v1` ([tasks/cii-v1](tasks/cii-v1/)) | 41 tasks mined from open-source pull requests merged after the measured models' training cutoffs, with complexity-scaled budgets, hidden fail-to-pass tests and regression guards. |
 | v1 | `v1`, `v1-micro`, `v1-large`, `v1-diamond`, `v1-carbyne` ([tasks/v1](tasks/v1/)) | 52 gold-verified tasks across Python, Go, TypeScript and Rust in three difficulty tiers, plus the `hello-world` demo. Diamond and Carbyne tiers use rubric-graded mergeability with terse prompts. |
 | v2, v3 | `v2`, `v3` | Earlier coding suites, kept so their archived reports stay reproducible. Results are only comparable within one suite. |
@@ -179,7 +179,7 @@ Task format and contribution rules: [docs/TASK_CONTRIBUTION.md](docs/TASK_CONTRI
 
 ## Code quality judging
 
-The run-time `human_like` judge is a quick signal. Published SWE v4 scores use
+The run-time `human_like` judge is a quick signal. Published Frontier v4 scores use
 a separate, frozen protocol, [docs/judging/code-quality-maintenance-v3.md](docs/judging/code-quality-maintenance-v3.md),
 because automated metrics reward compression and a model reads dense code for
 free.

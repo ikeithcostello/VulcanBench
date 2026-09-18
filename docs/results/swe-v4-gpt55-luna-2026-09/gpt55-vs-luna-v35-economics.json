@@ -282,6 +282,6 @@
     "Estimates cover exposed receipts, not an independently observed API invoice."
   ],
   "summary_sha256": "faea0a8e7a99c02aa18e311e0340111f77ba41c8ce535f180acc6a1911f26f0a",
-  "png_sha256": "95b71073b55c462422b36d9a8bf0d27f9f42da4fbd3d58ae738ddcb9db1dc325",
+  "png_sha256": "a089c961e77280fa40493b12061a75240415e06f679e4a8269ebf12f4cfd6391",
   "supporting_table": "gpt55-vs-luna-v35-economics-efforts.csv"
 }
