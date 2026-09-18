@@ -45,7 +45,7 @@ an error naming the file. Owner decision, in chat, 2026-09-16.
 
 ### Decision
 
-1. Every VulcanBench-SWE v4 (`coding-intelligence-index-v4`) task carries a
+1. Every VulcanBench Frontier v4 (`coding-intelligence-index-v4`) task carries a
    flat 3-hour agent timeout (10800 s, 540 steps at the 20 s/step stamp),
    down from 10 hours. Stamped in each task's `agent_hints` and declared
    once in `suite.json` `flat_budget`; `scripts/stamp_task_budgets.py --check`

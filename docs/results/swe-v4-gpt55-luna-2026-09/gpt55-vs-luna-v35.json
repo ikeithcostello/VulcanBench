@@ -148,7 +148,7 @@
   },
   "summary_sha256": "faea0a8e7a99c02aa18e311e0340111f77ba41c8ce535f180acc6a1911f26f0a",
   "protocol_sha256": "e2c2afdb5149cd3999ce10b79daa7830f768c56147d75c6e88958777405a65fb",
-  "png_sha256": "7c2b5365d0158c6b9f1b98532ea4101228c4febf848495e5284c047f45f1a370",
+  "png_sha256": "82fe91c5b2b0b03b6f545aa896af4cc72ba247f189677c82f7e54407c7228de0",
   "supporting_table": "gpt55-vs-luna-v35-efforts.csv",
   "visual_qa": "Requires visual inspection after rendering"
 }

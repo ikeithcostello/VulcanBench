@@ -191,7 +191,7 @@ def main():  # noqa: PLR0915, one linear figure
     text(right, 0.65, "September 2026", 14, ha="right", color=MUTED)
     line(left, right, 1.05, INK, 1.2)
 
-    text(left, 1.78, "VulcanBench-SWE v4: GPT-5.5 vs. GPT-5.6 Luna", 33, True, heading=True)
+    text(left, 1.78, "VulcanBench Frontier v4: GPT-5.5 vs. GPT-5.6 Luna", 33, True, heading=True)
     text(
         left,
         2.22,

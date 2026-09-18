@@ -290,7 +290,7 @@ def main():  # noqa: PLR0912, PLR0915, one linear figure
 
     # Title
     text(
-        left, 1.78, "VulcanBench-SWE v4: GPT-5.6 Terra across effort levels", 33, True, heading=True
+        left, 1.78, "VulcanBench Frontier v4: GPT-5.6 Terra across effort levels", 33, True, heading=True
     )
     text(
         left,

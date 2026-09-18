@@ -13,6 +13,14 @@ use "to" for ranges (for example "10 to 20", not "10–20").
 
 Keep headings plain (no decorative dashes around them) on shareable assets.
 
+## Suite names
+
+The public name of `tasks/coding-intelligence-index-v4` is **VulcanBench
+Frontier v4** (renamed from VulcanBench-SWE v4 on 2026-09-18; URL slugs,
+file names and run directories keep `swe-v4` and are never renamed). Its
+private routine companion is VulcanBench Routine v1. Use the public names in
+anything user-facing; never write "SWE v4" for new material.
+
 ## Operating decisions
 
 Run-condition decisions (task timeouts, sweep concurrency, and why) are
