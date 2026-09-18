@@ -19,7 +19,7 @@ from harness.tasks import load_task, task_hash
 ROOT = Path(__file__).resolve().parents[2]
 SUITE = ROOT / "tasks/coding-intelligence-index-v4"
 OUT = ROOT / "runs-muse13-contributor-cii-v4-v2"
-LEVELS = ["minimal", "low", "medium", "high", "extra-high", "ultra"]
+LEVELS = ["minimal", "low", "medium", "high", "extra-high"]
 MODEL = "muse-code:muse-spark-1.3-contributor"
 BINARY = Path.home() / ".local/bin/muse-bin-1.0.3-R2198.1"
 BINARY_SHA256 = "4c0f960028b603174af7df7bd5051d8c35d6c1aa372a37d18bc770926a0577a7"
@@ -140,7 +140,8 @@ def main():
         "effort_provenance": "Explicit CLI flags, live no-task probes passed; provider does not echo effort",
         "ultra": "Client-side mode mapped to provider's highest supported reasoning tier; may change delegation; not a distinct higher API effort",
         "excluded_efforts": {
-            "max": "Meta documents max as Standard-only; successful CLI acceptance does not prove effective max reasoning"
+            "max": "Meta documents max as Standard-only; successful CLI acceptance does not prove effective max reasoning",
+            "ultra": "Blocked board-wide by vulcanbench.toml [effort].blocked (decision 2026-09-16): a client-side mode mapped onto the provider's highest tier, not a distinct API effort, and the board publishes Low to Max only",
         },
         "price_source": "https://dev.meta.ai/docs/pricing-rate-limits/",
         "runtime_caveat": "Local host, concurrent Fable sweep; no CPU pinning",
@@ -189,6 +190,13 @@ def main():
                 "change": "Re-pinned harness/effort.py to the working-tree version carrying an in-progress Devin CLI effort map (uncommitted work by another session on branch frontier-rename)",
                 "reason": "The added _DEVIN_EFFORT_VALUES table and its registry entry do not touch the muse-code effort map; the Muse tests pass against the tree",
                 "state_at_amendment": "extra-high 21/23 complete; ultra not started",
+                "solver_conditions_changed": False,
+            },
+            {
+                "at": "2026-09-18T20:30:00+00:00",
+                "change": "Dropped ultra from the sweep levels; the sweep ends at extra-high with 5 levels x 23 tasks",
+                "reason": "vulcanbench.toml [effort].blocked refuses ultra at every entry point (owner decision 2026-09-16, docs/DECISIONS.md), and that record directs this protocol to drop ultra at its next stop",
+                "state_at_amendment": "minimal, low, medium, high, extra-high complete (115 scored runs); no ultra run was ever attempted",
                 "solver_conditions_changed": False,
             },
         ],
