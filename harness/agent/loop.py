@@ -1206,7 +1206,7 @@ def _verify(
     return functional, payload
 
 
-# .cursor/, .grok/ and .zcode/ hold harness-written config, not agent work. The build
+# .cursor/, .grok/, .zcode/ and .devin/ hold harness-written config, not agent work. The build
 # dirs matter beyond patch noise: node_modules/.cache/nyc/*.js and similar
 # generated files carry scored extensions, so an un-ignored build dir doesn't
 # just bloat final.patch -- group_by_language() picks them up and quality/
@@ -1214,6 +1214,7 @@ def _verify(
 # (observed live: nyc cache JS files scored on oss-hono-client-header-merge).
 _WORKSPACE_GITIGNORE = (
     ".coverage\n__pycache__/\n.pytest_cache/\n.ruff_cache/\n*.pyc\n.cursor/\n.grok/\n.zcode/\n"
+    ".devin/\n"
     "target/\nnode_modules/\ndist/\nbuild/\n.gocache/\n.nyc_output/\n*.egg-info/\n"
 )
 

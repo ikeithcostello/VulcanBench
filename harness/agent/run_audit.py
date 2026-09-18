@@ -51,7 +51,8 @@ from pathlib import Path
 from typing import Any
 
 # Cursor/Claude Code camel-case forms plus Grok Build's snake-case tool
-# titles as they appear in trace updates ("title":"web_search").
+# titles as they appear in trace updates ("title":"web_search") and Devin's
+# lower-case "webfetch".
 _WEB_MARKERS = (
     "webSearchToolCall",
     "webFetchToolCall",
@@ -59,6 +60,7 @@ _WEB_MARKERS = (
     '"WebFetch"',
     '"web_search"',
     '"web_fetch"',
+    '"webfetch"',
 )
 _URL_RE = re.compile(r"https?://[^\s\"'\\]+")
 

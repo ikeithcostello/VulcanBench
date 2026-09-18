@@ -10,7 +10,8 @@ task's hidden tests away from the agent, grades the result deterministically,
 and records everything: the full trace, the final patch, tokens, wall-clock,
 cost, and a reproducible replay command. It measures a model either through a
 raw API or through the product it ships in (Claude Code, Codex, Cursor, Grok
-Build, ZCode, Muse Code), at every reasoning-effort level the provider exposes.
+Build, ZCode, Muse Code, Devin CLI), at every reasoning-effort level the
+provider exposes.
 
 Published results, model cards and methodology live at
 [vulcanbench.com](https://vulcanbench.com). The public record behind each
@@ -131,6 +132,7 @@ vulcanbench run --suite cii-v4 --harness codex --billing subscription \
 | Grok Build | `grok-build` | `grok login` | custom kernel profile: workspace writes allowed, repository reads denied |
 | ZCode | `zcode` | `zcode login` (GLM Coding Plan) | permission mode `yolo`, web tools removed |
 | Muse Code | `muse-code` | Muse account | macOS outer sandbox, isolated session data, repository read denied |
+| Devin CLI | `devin` | `devin auth login` (Devin account) | print mode, permission mode `dangerous`, web tools disabled; effort is the model id's last token (`swe-2-medium|high|max`); no API price, so cost is recorded as unavailable |
 
 Muse Code runs only from a content-pinned binary so an auto-updating launcher
 can never change the system under test mid-sweep:
