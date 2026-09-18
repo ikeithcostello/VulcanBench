@@ -179,7 +179,7 @@ Task format and contribution rules: [docs/TASK_CONTRIBUTION.md](docs/TASK_CONTRI
 
 ## Code quality judging
 
-The run-time `human_like` judge is a quick signal. Published SWE v4 scores use
+The run-time `human_like` judge is a quick signal. Published Frontier v4 scores use
 a separate, frozen protocol, [docs/judging/code-quality-maintenance-v3.md](docs/judging/code-quality-maintenance-v3.md),
 because automated metrics reward compression and a model reads dense code for
 free.
