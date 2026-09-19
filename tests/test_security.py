@@ -57,9 +57,10 @@ def test_asserts_in_test_files_are_not_weaknesses(tmp_path: Path) -> None:
     )
     (tmp_path / "check.py").write_text("def check(x):\n    assert x > 0\n    return x\n")
     with_tests = assess_security(tmp_path, ["pkg/core.py", "tests/test_core.py"])
+    python = with_tests.details["languages"]["python"]
     assert with_tests.score == 1.0
-    assert with_tests.details["low"] == 0
-    assert with_tests.details["skipped_test_asserts"] == 2
+    assert python["low"] == 0
+    assert python["skipped_test_asserts"] == 2
     in_source = assess_security(tmp_path, ["check.py"])
-    assert in_source.details["low"] == 1
+    assert in_source.details["languages"]["python"]["low"] == 1
     assert in_source.score is not None and in_source.score < 1.0
