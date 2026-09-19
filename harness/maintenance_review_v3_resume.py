@@ -26,6 +26,7 @@ Usage: python -m harness.maintenance_review_v3_resume calibrate --panel claude
 
 from __future__ import annotations
 
+import fcntl
 import importlib
 import json
 import os
@@ -33,6 +34,7 @@ import re
 import subprocess
 import sys
 import time
+import traceback
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -644,6 +646,118 @@ def recover_excerpts(folder: Path, panel: str, stage: str) -> bool:  # noqa: PLR
     return False
 
 
+INVALID_MARKER = "operator-invalid.json"
+
+
+def invalidate_unrecoverable_probe(folder: Path, panel: str, stage: str) -> bool:  # noqa: PLR0911, one return per precondition
+    """Both probe attempts failed only on an excerpt that no recovery rule accepts.
+
+    A quote with a token added, changed, or invented is a fabrication under the
+    protocol, so the response is invalid. The frozen summary already defines
+    the outcome: a submission without a valid match from a passing panel is
+    left unpublished (its L1 review stands but no score is published for it).
+    The wrapper records the finding in the call folder and the remaining probes
+    continue; nothing about the judgment is altered or filled in.
+    """
+    if stage != "probe" or (folder / INVALID_MARKER).exists():
+        return False
+    receipts = [folder / f"attempt-{n}.json" for n in (1, 2)]
+    if not all(r.exists() for r in receipts):
+        return False
+    if any(json.loads(r.read_text()).get("error") != EXCERPT_ERROR for r in receipts):
+        return False
+    evidence = payload_for(stage, folder.name)
+    if evidence is None:
+        return False
+    source = list(v3.strings(evidence))
+    unsupported = {}
+    for attempt in (1, 2):
+        stream = folder / f"attempt-{attempt}.stream.jsonl"
+        if not stream.exists():
+            return False
+        try:
+            vote = v3.parse_stream_for(panel, stream.read_text())
+        except (ValueError, json.JSONDecodeError, KeyError):
+            return False
+        bad = [
+            d["excerpt"]
+            for d in vote.get("departures", [])
+            if rewrap_excerpt(d["excerpt"], source) is None
+        ]
+        if not bad:
+            return False  # recoverable after all; leave it to recover_excerpts
+        unsupported[str(attempt)] = bad
+    rec = {
+        "at": datetime.now(UTC).isoformat(),
+        "finding": "Both attempts quoted an excerpt absent from the evidence that no recovery "
+        "rule accepts (a token added, changed, or invented).",
+        "action": "Probe invalid; no match call is made. The frozen summary leaves the "
+        "submission unpublished for this panel. Remaining probes continue.",
+        "unsupported_excerpts": unsupported,
+    }
+    (folder / INVALID_MARKER).write_text(json.dumps(rec, indent=2, sort_keys=True))
+    print(
+        json.dumps({"event": "probe_invalidated", "call": str(folder.relative_to(_out()))}),
+        flush=True,
+    )
+    return True
+
+
+def invalidated_probes(panel: str) -> set[str]:
+    return {
+        d.name
+        for d in (_out() / "calls" / panel / "probe").glob("*/")
+        if (d / INVALID_MARKER).exists()
+    }
+
+
+def run_probes_skipping(panel: str, skipped: set[str]) -> int:
+    """Drive the frozen probe stage in-process, skipping invalidated submissions.
+
+    Mirrors the frozen run_probes exactly (same calls, same lock) except that
+    invalidated rows are not called again, since the frozen command would stop
+    on them every time. Returns a process-style exit code for the main loop.
+    """
+    try:
+        protocol = v3.verify_frozen()
+        v3.require_passed(panel)
+        with (_out() / f".{panel}.lock").open("w") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            for row in v3.read(_out() / "private-manifest.json"):
+                if row["id"] in skipped:
+                    continue
+                evidence = v3.read(_out() / "evidence" / f"{row['id']}.json")
+                key = v3.load_key(row["task"])
+                probe = v3.call(
+                    panel, "probe", row["id"], "probe", v3.probe_evidence(evidence), protocol
+                )
+                v3.call(
+                    panel,
+                    "match",
+                    row["id"],
+                    "match",
+                    {"key": key["quirks"], "departures": probe["departures"]},
+                    protocol,
+                )
+    except Exception:  # the main loop applies operator rules to whatever stopped
+        traceback.print_exc()
+        return 1
+    print(
+        json.dumps(
+            {"event": "probe_stage_skipped_invalid", "panel": panel, "skipped": sorted(skipped)}
+        ),
+        flush=True,
+    )
+    return 0
+
+
+def run_stage_once(args: list[str], panel: str) -> int:
+    skipped = invalidated_probes(panel) if args and args[0] == "probe" else set()
+    if skipped:
+        return run_probes_skipping(panel, skipped)
+    return subprocess.run([sys.executable, "-u", "-m", MODULE, *args], check=False).returncode
+
+
 def newest_unresolved(panel: str) -> Path | None:
     stopped = [
         d
@@ -692,8 +806,8 @@ def main() -> int:
     panel = args[args.index("--panel") + 1]
     applied = 0
     while True:
-        proc = subprocess.run([sys.executable, "-u", "-m", MODULE, *args], check=False)
-        if proc.returncode == 0:
+        returncode = run_stage_once(args, panel)
+        if returncode == 0:
             print(
                 json.dumps({"event": "stage_complete", "operator_rule_applications": applied}),
                 flush=True,
@@ -704,6 +818,9 @@ def main() -> int:
             applied += 1
             continue
         if folder is not None and recover_excerpts(folder, panel, folder.parent.name):
+            applied += 1
+            continue
+        if folder is not None and invalidate_unrecoverable_probe(folder, panel, folder.parent.name):
             applied += 1
             continue
         if folder is not None and accept_fallback(folder, panel, folder.parent.name):
@@ -735,7 +852,7 @@ def main() -> int:
                 ),
                 flush=True,
             )
-            return proc.returncode
+            return returncode
 
 
 if __name__ == "__main__":

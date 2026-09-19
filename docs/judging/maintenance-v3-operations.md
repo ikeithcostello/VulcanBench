@@ -238,3 +238,40 @@ operational notes live here.
 - September 16, 09:36 PDT: both passes complete. Summary written: 114 of
   114 published, two L2 redistributions (granarycore at low, schedcore at
   high), both panels passing.
+
+## v3.7, September 18, 2026: GPT-5.6 Sol
+
+- Population frozen September 18, 13:09 PDT: 115 rows (23 tasks at each of
+  low, medium, high, extra-high and max), no exclusions, none missing.
+- Both judges retook the calibration exam under v3.7 and passed every gate;
+  neither used the pre-registered allowance.
+- Grok, calibration probe-0-r4 (14:30 PDT): Cursor returned
+  `ActionRequiredError: Request blocked ... under the model provider's
+  usage guidelines` before any model output. The identical control prompt
+  served under v3.5 and v3.6, so the block is a transport fault, not a
+  judgment. New wrapper rule retry_provider_block: one fresh attempt when
+  the provider refuses with no assistant output; a second block on the same
+  call stops for a person. The retry served and the gate run completed.
+- Grok, probe submission-023 (23:35 PDT, sol at max on
+  legacy-codeccore-binary-parity): both attempts quoted
+  `memo = record[31:46].rstrip(".",")` where the source line is
+  `memo = record[31:46].rstrip(".,")`. The excerpt has a character inserted
+  inside the string literal; it is neither a re-wrap, an omission, nor an
+  escape spelling, so no recovery rule accepts it and, as with the GLM
+  fabrications, none was added. The probe is invalid. The frozen summary
+  already defines the outcome: a submission without a valid match from a
+  passing panel is left unpublished, so submission-023 keeps its two L1
+  reviews and its Muse probe but carries no published code quality score;
+  sol at max is therefore published on 22 of 23 tasks. New wrapper rule
+  invalidate_unrecoverable_probe records the finding in the call folder
+  (`operator-invalid.json`) and drives the rest of the probe stage
+  in-process with that row skipped, since the frozen `probe` command would
+  stop on it every time. Nothing in the judge's response was altered or
+  filled in. The owner can reverse this by deleting the marker and
+  rerunning the probe under an amendment; the receipts are retained.
+- Second attempts under the existing rules so far: Muse nine (six primary,
+  three probe: five unsupported excerpts, four malformed JSON); Grok six
+  before submission-023 (two unsupported excerpts on primaries, one on a
+  calibration control, one DNS transport fault on a primary, one on a
+  calibration pair, the provider block above). Neither judge produced a
+  reviewer fallback.
