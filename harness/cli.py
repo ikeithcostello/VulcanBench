@@ -77,7 +77,8 @@ def _execution_spec(model: str, harness_name: str, billing: str) -> str:
     if harness_name == "vulcan":
         if billing == "subscription":
             raise ValueError(
-                "--billing subscription requires --harness claude-code|codex|cursor|grok-build|zcode"
+                "--billing subscription requires --harness "
+                "claude-code|codex|cursor|grok-build|zcode|muse-code|devin"
             )
         return model
     if harness_name not in CLI_AGENT_PROVIDERS:
@@ -187,12 +188,12 @@ def run(  # noqa: PLR0912, PLR0915, CLI entry: option declarations + linear guar
         "--model",
         "-m",
         help="Model id. Use provider:model for Vulcan's API loop, or a bare model "
-        "with --harness claude-code|codex|cursor|grok-build|zcode.",
+        "with --harness claude-code|codex|cursor|grok-build|zcode|muse-code|devin.",
     ),
     harness_name: str = typer.Option(
         "vulcan",
         "--harness",
-        help="Execution harness: vulcan|claude-code|codex|cursor|grok-build|zcode",
+        help="Execution harness: vulcan|claude-code|codex|cursor|grok-build|zcode|muse-code|devin",
     ),
     billing: str = typer.Option(
         "auto",

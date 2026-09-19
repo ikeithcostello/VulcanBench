@@ -7,6 +7,57 @@ changing run conditions. Suite-level policy for v4 lives in
 [tasks/coding-intelligence-index-v4/CHARTER.md](../tasks/coding-intelligence-index-v4/CHARTER.md);
 entries here record the measurements behind those rules.
 
+## 2026-09-18: Devin SWE-2 sweeps run medium, high and max only, unpriced
+
+### Decision
+
+The Devin SWE-2 column on VulcanBench Frontier v4 is swept at exactly the
+three effort variants Devin's account catalog lists for the family
+(`swe-2-medium`, `swe-2-high`, `swe-2-max`), through the Devin CLI harness
+(`--harness devin`), one attempt per task, serial, under the flat 3-hour
+task timeout. No low or extra-high column is published for SWE-2, and the
+cost column is "unavailable" rather than an API-equivalent estimate.
+Launcher: `scripts/cii-v4-board/run_devin_effort_sweep.sh`, queued behind
+the Sol chain by `logs/devin-swe2-chain.sh`. Owner request, in chat,
+2026-09-18.
+
+### Evidence
+
+- Devin exposes effort only as the last token of a model id; `devin models
+  list --format json` on this account lists SWE-2 as `swe-2-medium`,
+  `swe-2-high` and `swe-2-max` and nothing else (no `-low`, no `-xhigh`).
+  Cognition's SWE-2 announcement names the same three levels. The adapter
+  refuses an unlisted uid because the CLI otherwise falls back silently to a
+  default model (its log: "did not resolve to an available, allowed model;
+  starting on the default").
+- The cloud Devin Sessions API cannot pin a model or an effort at all (its
+  only knob is `devin_mode`: normal, fast, lite, ultra, fusion), so the local
+  CLI is the only route that measures SWE-2 at a known effort. `ultra` there
+  is a session mode, not an effort, and is blocked anyway.
+- SWE-2 has no public per-token price (catalog cost tier "Free" through
+  2026-10-10, Devin-only availability), so an API-equivalent cost would be
+  invented. Tokens and Devin's credit/ACU counters are recorded instead.
+- A live hello-world run on 2026-09-18 (`swe-2-medium`, CLI 3000.10.31)
+  confirmed print-mode flags, per-run config acceptance, session harvest,
+  receipt deduplication and the served-model check.
+
+### What this touched
+
+- `harness/agent/devin_cli.py` (new), `harness/agent/cli_agents.py`,
+  `harness/effort.py`, `harness/agent/run_audit.py` (`"webfetch"` marker),
+  `harness/agent/loop.py` (`.devin/` ignored in workspaces), `harness/cli.py`,
+  `harness/pricing.py` (comment only), `tests/test_devin_cli.py`,
+  `scripts/cii-v4-board/run_devin_effort_sweep.sh`, `logs/devin-swe2-chain.sh`,
+  README and `docs/HARNESS_BENCHMARKING.md`.
+
+### Revisit triggers
+
+- Devin adds `swe-2-low` or `swe-2-xhigh` to the catalog: extend `LEVELS`
+  in the launcher and the sweep gains a column, nothing else changes.
+- Cognition publishes a per-token API rate for SWE-2: add a `devin:swe-2`
+  price entry and re-run `reprice_runs.py`; until then the column stays
+  unpriced.
+
 ## 2026-09-16: the "ultra" effort level never runs
 
 ### Decision
