@@ -696,7 +696,12 @@ def run_devin_task(  # noqa: PLR0912, PLR0915, linear process + harvest
     config_path.write_text(json.dumps(run_config, indent=1) + "\n", encoding="utf-8")
     prompt_path = scratch / "prompt.md"
     prompt_path.write_text(prompt, encoding="utf-8")
-    export_path = (stream_log_path.parent if stream_log_path else scratch) / "devin-session"
+    # Devin resolves --export against its own working directory (the task
+    # workspace under /tmp), so the path must be absolute or the CLI fails at
+    # exit with "failed to write conversation export" and the run is lost.
+    export_path = (
+        (stream_log_path.parent if stream_log_path else scratch) / "devin-session"
+    ).resolve()
     export_path.mkdir(exist_ok=True)
     export_file = export_path / "export.json"
 
