@@ -605,6 +605,23 @@ Protocol id `code-quality-maintenance-v3.6.1`; run directory
 - Publication merges the v3.6 and v3.6.1 directories; the v3.6 record is
   not rewritten. Aggregates for the max cell are recomputed over all 23.
 
+## Amendment v3.7, September 18, 2026: the same protocol on GPT-5.6 Sol
+
+Nothing in the rubric, controls, quirk keys, gates, repeats, seed or judges
+changes. Protocol id `code-quality-maintenance-v3.7`; run directory
+`runs-code-quality-maintenance-v3.7`; runner
+`harness/maintenance_review_v37.py`, derived from the v3.6 runner.
+
+- Population: the September 17 to 18, 2026 GPT-5.6 Sol effort sweep through
+  Codex on the same 23 tasks, one attempt per task and level, all five
+  levels complete, 115 submissions. The sweep ran on the second ChatGPT
+  account (Pro plan) throughout, so no account change occurs inside it.
+- Both neutral judges retake the identical calibration exam under v3.7
+  before any counted call. No sensitivity panels. Pairwise diagnostics pair
+  the same task at two effort levels, as under v3.6.
+- Publication: Sol joins GPT-5.5, Luna, Terra, Astra and Fable 5.1 on the
+  Frontier v4 board, completing the GPT-5.6 family.
+
 ## Not yet done
 
 - v3.4 calibration results for Muse Spark 1.3, v3.3 results for Grok 4.6,
