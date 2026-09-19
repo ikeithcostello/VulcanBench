@@ -58,6 +58,35 @@ the Sol chain by `logs/devin-swe2-chain.sh`. Owner request, in chat,
   price entry and re-run `reprice_runs.py`; until then the column stays
   unpriced.
 
+## 2026-09-18: assert statements in test files are not security findings
+
+### Decision
+
+The security factor's bandit scan skips finding B101 (use of `assert`) when
+the file is test code: under a `tests/` or `test/` directory, named
+`test_*.py` or `*_test.py`, or `conftest.py`. Every other finding, and every
+B101 outside test code, counts as before. Owner decision, in chat,
+2026-09-18; the skipped count is reported in the metric details.
+
+### Evidence
+
+- On the VulcanBench Routine v1 admission gate, GPT-6 Astra at Low wrote or
+  extended a unit test file on all 12 tasks and scored 0.0 to 0.7 on
+  security for it: every low-severity finding was B101 in those tests. An
+  engineer adding tests to a routine change is the behaviour the suite wants.
+- Bandit's own documentation recommends skipping B101 for test code, since
+  `assert` is the mechanism of a test, not a weakness in shipped code.
+- Across all 438 published Frontier v4 runs no patch touched a test file, so
+  no published score changes; the rule matters for the Routine suite and for
+  any future run that adds tests.
+
+### What this touched
+
+- `harness/evaluator/security.py`: counts severities from bandit's per-finding
+  results instead of its totals, dropping B101 in test files.
+- `tests/test_security.py`: a test for the exemption and for B101 outside
+  tests still counting.
+
 ## 2026-09-16: the "ultra" effort level never runs
 
 ### Decision
