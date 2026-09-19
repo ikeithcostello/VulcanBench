@@ -269,9 +269,11 @@ operational notes live here.
   stop on it every time. Nothing in the judge's response was altered or
   filled in. The owner can reverse this by deleting the marker and
   rerunning the probe under an amendment; the receipts are retained.
-- Second attempts under the existing rules so far: Muse nine (six primary,
-  three probe: five unsupported excerpts, four malformed JSON); Grok six
-  before submission-023 (two unsupported excerpts on primaries, one on a
-  calibration control, one DNS transport fault on a primary, one on a
-  calibration pair, the provider block above). Neither judge produced a
-  reviewer fallback.
+- Second attempts over the whole pass: Muse nine (four unsupported
+  excerpts, two on primaries and two on probes; five malformed JSON, four on
+  primaries and one on a probe); Grok nine (five unsupported excerpts: one
+  calibration control, two primaries, two probes including submission-023;
+  one malformed JSON on a probe; two DNS transport faults; the provider
+  block above). Neither judge produced a reviewer fallback.
+- September 19, 03:35 PDT: both passes complete. Summary written: 114 of
+  115 published, no L2 redistributions, both panels passing.
